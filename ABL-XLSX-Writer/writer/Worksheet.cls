@@ -19,7 +19,7 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Worksheet INHERITS xmlwriter:
    DEFINE PUBLIC PROPERTY worksheetname AS CHARACTER GET. SET.
    DEFINE PUBLIC PROPERTY optimization  AS LOGICAL INITIAL TRUE  GET. SET.
    
-
+    
    DEFINE PUBLIC  PROPERTY SharedStringTable    AS CLASS SharedStringTable GET. SET. /** Object set by the workbook.cls **/
    DEFINE PRIVATE PROPERTY Utility              AS CLASS Utility GET. SET. 
 
@@ -30,21 +30,22 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Worksheet INHERITS xmlwriter:
    DEFINE PRIVATE PROPERTY span                 AS CHARACTER GET. SET.
    
     /** View Attributes **/
-    DEFINE PUBLIC PROPERTY showGridLines        AS LOGICAL NO-UNDO  GET. SET. 
-    DEFINE PUBLIC PROPERTY show_zeros           AS LOGICAL NO-UNDO  GET. SET.
-    DEFINE PUBLIC PROPERTY is_right_to_left     AS LOGICAL NO-UNDO  GET. SET.
+    DEFINE PUBLIC PROPERTY showGridLines        AS LOGICAL NO-UNDO  GET. PRIVATE SET. 
+    DEFINE PUBLIC PROPERTY show_zeros           AS LOGICAL NO-UNDO  GET. PRIVATE SET.
+    DEFINE PUBLIC PROPERTY is_right_to_left     AS LOGICAL NO-UNDO  GET. PRIVATE SET.
     DEFINE PUBLIC PROPERTY selected             AS LOGICAL NO-UNDO  GET. SET.
-    DEFINE PUBLIC PROPERTY outline_on           AS LOGICAL NO-UNDO  GET. SET.
-    DEFINE PUBLIC PROPERTY page_view            AS LOGICAL NO-UNDO  GET. SET.    
-    DEFINE PUBLIC PROPERTY zoom                 AS INTEGER NO-UNDO  GET. SET.    
-    DEFINE PUBLIC PROPERTY zoom_scale_normal    AS LOGICAL NO-UNDO  GET. SET.    
+    DEFINE PUBLIC PROPERTY outline_on           AS LOGICAL NO-UNDO  GET. PRIVATE SET.
+    DEFINE PUBLIC PROPERTY page_view            AS LOGICAL NO-UNDO  GET. PRIVATE SET.    
+    DEFINE PUBLIC PROPERTY zoom                 AS INTEGER NO-UNDO  GET. PRIVATE SET.    
+    DEFINE PUBLIC PROPERTY zoom_scale_normal    AS LOGICAL NO-UNDO  GET. PRIVATE SET.    
 
     /** sheetFormatPr Attributes **/
-    DEFINE PUBLIC PROPERTY default_row_height AS INTEGER INITIAL 15     NO-UNDO GET. SET.
-    DEFINE PUBLIC PROPERTY default_row_zeroed AS LOGICAL                NO-UNDO GET. SET.
-    DEFINE PUBLIC PROPERTY outline_row_level  AS INTEGER INITIAL 0      NO-UNDO GET. SET.
-    DEFINE PUBLIC PROPERTY outline_col_level  AS INTEGER INITIAL 0      NO-UNDO GET. SET.
-    DEFINE PUBLIC PROPERTY excel_version      AS INTEGER INITIAL 2007   NO-UNDO GET. SET.
+    DEFINE PUBLIC PROPERTY default_row_height AS INTEGER INITIAL 15     NO-UNDO GET. PRIVATE SET.
+    DEFINE PUBLIC PROPERTY default_row_zeroed AS LOGICAL                NO-UNDO GET. PRIVATE SET.
+    DEFINE PUBLIC PROPERTY outline_row_level  AS INTEGER INITIAL 0      NO-UNDO GET. PRIVATE SET.
+    DEFINE PUBLIC PROPERTY outline_col_level  AS INTEGER INITIAL 0      NO-UNDO GET. PRIVATE SET.
+    DEFINE PUBLIC PROPERTY excel_version      AS INTEGER INITIAL 2007   NO-UNDO GET. PRIVATE SET.
+    DEFINE PUBLIC PROPERTY tab_colour         AS CHARACTER              NO-UNDO GET. PRIVATE SET.
     
     /** pageSetup Attributes **/
     DEFINE PUBLIC PROPERTY paperSize    AS INTEGER   NO-UNDO                    GET. SET.
@@ -104,9 +105,9 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Worksheet INHERITS xmlwriter:
         THIS-OBJECT:outline_row_level  = 0.
         THIS-OBJECT:outline_col_level  = 0.
         THIS-OBJECT:excel_version      = 2007. /** Default to Microsoft Excel 2007**/
-
         THIS-OBJECT:showGridLines    = TRUE.
         THIS-OBJECT:show_zeros       = TRUE.
+        THIS-OBJECT:tab_colour       = ''.
    END CONSTRUCTOR.
     
    METHOD PRIVATE VOID _write (INPUT in_Row     AS INTEGER,
@@ -185,6 +186,10 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Worksheet INHERITS xmlwriter:
             ttSheetData.Cell_Value  = chVALUE
             ttSheetData.DATATYPE    = chDataType.
    END METHOD.
+
+    METHOD PUBLIC VOID set_tab_color(INPUT pch_tab_colour AS CHARACTER):
+        THIS-OBJECT:tab_colour = THIS-OBJECT:Utility:xl_colour(INPUT pch_tab_colour).
+    END METHOD.
     
    /* Merge a range of cells. */
    METHOD PUBLIC VOID merge_range(INPUT in_first_row  AS INTEGER,
@@ -646,8 +651,25 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Worksheet INHERITS xmlwriter:
    METHOD PRIVATE VOID _write_optimized_sheet_data():
    END METHOD.
 
-   METHOD PRIVATE VOID _write_sheet_pr():
-   END METHOD.
+    METHOD PRIVATE VOID _write_sheet_pr():
+        /** If  tab colour has not been defined then return. **/
+        IF THIS-OBJECT:tab_colour EQ '' THEN
+            RETURN.
+
+        hnSAXWriter:START-ELEMENT('sheetPr').
+
+        THIS-OBJECT:_write_tab_color().
+
+        hnSAXWriter:END-ELEMENT('sheetPr').
+    END METHOD.
+
+    METHOD PRIVATE VOID _write_tab_color():
+        hnSAXWriter:WRITE-EMPTY-ELEMENT('tabColor' ).
+        hnSAXWriter:INSERT-ATTRIBUTE('rgb', THIS-OBJECT:tab_colour).
+    END METHOD.
+
+
+
 
    METHOD PRIVATE VOID _write_dimension():
 

@@ -1,3 +1,4 @@
+USING Progress.Json.ObjectModel.*.
 
 /*     Copyright (C) 2014 James Bowen                                                                                                                       */
 /*                                                                                                                                                          */
@@ -63,10 +64,8 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Utility:
     END METHOD.
 
     METHOD PUBLIC CHARACTER xl_rowcol_to_cell ():
-RETURN "".
+        RETURN "".
     END METHOD.
-
-    
 
     METHOD PUBLIC CHARACTER xl_rowcol_to_cell (INPUT inRow AS INTEGER,
                                                INPUT iNCOL AS INTEGER,
@@ -83,6 +82,85 @@ RETURN "".
                                inRow).
 
         RETURN cell_Name.
+    END METHOD.
+
+    METHOD PUBLIC CHARACTER xl_colour (INPUT pch_Colour AS CHARACTER):
+        
+        DEFINE VARIABLE ch_Colour_Hex_Code AS CHARACTER   NO-UNDO.
+
+        CASE pch_Colour:
+            WHEN 'black' THEN
+                ch_Colour_Hex_Code = '#000000'.
+            WHEN 'blue' THEN
+                ch_Colour_Hex_Code = '#0000FF'.
+            WHEN 'brown' THEN
+                ch_Colour_Hex_Code = '#800000'.
+            WHEN 'cyan' THEN
+                ch_Colour_Hex_Code = '#00FFFF'.
+           WHEN 'gray' THEN
+                ch_Colour_Hex_Code = '#808080'.
+           WHEN 'green' THEN
+                ch_Colour_Hex_Code = '#008000'.
+            WHEN 'lime' THEN
+                ch_Colour_Hex_Code = '#00FF00'.
+            WHEN 'magenta' THEN
+                ch_Colour_Hex_Code = '#FF00FF'.
+            WHEN 'navy' THEN
+                ch_Colour_Hex_Code = '#000080'.
+            WHEN 'orange' THEN
+                ch_Colour_Hex_Code = '#FF6600'.
+            WHEN 'pink' THEN
+                ch_Colour_Hex_Code = '#FF00FF'.
+            WHEN 'purple' THEN
+                ch_Colour_Hex_Code = '#800080'.
+            WHEN 'red' THEN
+                ch_Colour_Hex_Code = '#FF0000'.
+            WHEN 'silver' THEN
+                ch_Colour_Hex_Code = '#C0C0C0'.
+            WHEN 'white' THEN
+                ch_Colour_Hex_Code = '#FFFFFF'.
+            WHEN 'yellow' THEN
+                ch_Colour_Hex_Code = '#FFFF00'.
+            OTHERWISE
+                ch_Colour_Hex_Code = pch_Colour.
+
+        END CASE.
+
+        IF THIS-OBJECT:_validate_hex_colour(INPUT ch_Colour_Hex_Code) THEN
+            RETURN REPLACE(ch_Colour_Hex_Code,'#','FF').
+        ELSE
+            MESSAGE SUBSTITUTE('&1 is an invalid colour choice.',
+                               QUOTER(ch_Colour_Hex_Code)
+                               )
+                VIEW-AS ALERT-BOX WARNING TITLE 'Invalid Colour'.    
+            
+        RETURN ''.  /** If we got to this part of the code then return blank. No Colour.**/
+            
+    END METHOD.
+
+    METHOD PRIVATE LOGICAL _validate_hex_colour (INPUT ch_Colour_Hex_Code AS CHARACTER):
+        DEFINE VARIABLE in_Loop       AS INTEGER    NO-UNDO.
+        DEFINE VARIABLE in_ASCII_Code AS INTEGER    NO-UNDO.
+        
+        ch_Colour_Hex_Code = CAPS(ch_Colour_Hex_Code).
+
+        IF NOT (ch_Colour_Hex_Code MATCHES '#......') THEN 
+            RETURN FALSE.
+
+        DO in_Loop = 1 TO LENGTH( ch_Colour_Hex_Code ):
+        
+            in_ASCII_Code  = ASC( SUBSTRING(ch_Colour_Hex_Code,in_Loop,1) ).
+        
+            IF (NOT in_ASCII_Code GE 65 AND     /** 65 = A **/
+                NOT in_ASCII_Code LE 70) OR     /** 70 = F **/
+               (NOT in_ASCII_Code GE 48 AND     /** 48 = 0 **/
+                NOT in_ASCII_Code LE 57) THEN   /** 57 = 9 **/
+                RETURN FALSE.
+                    
+        END.
+
+        RETURN TRUE.
+
     END METHOD.
 
 END CLASS.

@@ -17,12 +17,11 @@ USING Progress.Json.ObjectModel.*.
 
 CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Workbook INHERITS xmlwriter:
 
-    DEFINE PRIVATE PROPERTY filename            AS CHARACTER                    GET. SET.
+    DEFINE PUBLIC PROPERTY filename            AS CHARACTER                    GET. PRIVATE SET.
     DEFINE PRIVATE PROPERTY TempDir             AS CHARACTER                    GET. SET.
     DEFINE PRIVATE PROPERTY sheetname           AS CHARACTER    INITIAL 'Sheet' GET. SET.
     DEFINE PRIVATE PROPERTY sheetname_count     AS INTEGER      INITIAL 0       GET. SET.
     DEFINE PRIVATE PROPERTY num_format_count    AS INTEGER      INITIAL 0       GET. SET.
-
     DEFINE PUBLIC  PROPERTY SharedStringTable   AS CLASS SharedStringTable      GET. SET.
     DEFINE PUBLIC  PROPERTY xf_formats          AS HANDLE                       GET. PRIVATE SET.
 
@@ -106,7 +105,7 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Workbook INHERITS xmlwriter:
         THIS-OBJECT:dxf_Format_indices = NEW JSONOBJECT().
 
         THIS-OBJECT:xf_formats         = TEMP-TABLE ttxf_Formats:HANDLE.
-
+        
         /** Load the defaults Formats etc. **/
         THIS-OBJECT:add_Format().
         

@@ -369,8 +369,8 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Format INHERITS xmlwriter:
         THIS-OBJECT:font_script = TRUE.
     END METHOD.
 
-    METHOD PUBLIC VOID set_num_Format(INPUT pch_Format_Code AS CHARACTER):
-        THIS-OBJECT:num_format = pch_Format_Code.
+    METHOD PUBLIC VOID set_num_format(INPUT pch_format_code AS CHARACTER):
+        THIS-OBJECT:num_format = pch_format_code.
     END METHOD.
     
     METHOD PUBLIC VOID set_align(INPUT pch_alignment AS CHARACTER):
