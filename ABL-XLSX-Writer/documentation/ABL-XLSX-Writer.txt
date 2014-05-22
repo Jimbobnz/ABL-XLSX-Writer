@@ -28,7 +28,9 @@ Creates a format class object.
 WorkSheet
 =========	
 
+WorkSheet:WRITE(row, column, string, [format])
 
+row and column are 1 index based.
 
 Format
 ======
@@ -38,10 +40,10 @@ Format:set_font_name( fontname ).
 Format:set_font_size( font size ).
 Format:set_bold().
 Format:set_italic().
-Format:set_undlerline(1|2|3|4).
+Format:set_undlerline(1|2|3|4).  single|double|doubleAccounting|singleAccounting
 Format:set_font_strikeout().
 Format:set_font_script()
-Format:set_font_colour( colour | rgb hex code)
+Format:set_font_colour( colour | rgb hex code)    red|blue|green|lime or #FF3634
 Format:set_align( left|right|centre|fill|justify|center_across|distributed|justify_distributed|top|vcenter|bottom|vjustify|vdistributed).
 Format:set_rotation( angle of rotation )
 Format:set_indent( indent level )
