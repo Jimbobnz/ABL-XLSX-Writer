@@ -14,3 +14,6 @@ https://xlsxwriter.readthedocs.org/
 This project is in its infancy and should not be used in production enviorment.
 
 Currently there is no documentation but there is a sample demo code to call the class libary.
+
+Dependances 
+Due to a limitation of OpenEdge devlopment language there is no built-in capabilities to zip files so a 3rd party zip program is required.
