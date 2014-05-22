@@ -1,0 +1,50 @@
+Workbook
+========
+
+CONSTRUCTOR:
+Workbook( filename )
+THe Wookbook object construct requires a filename.  
+
+USING ABLExcelWriter.*.
+DEFINE VARIABLE objWorkbook AS CLASS Workbook NO-UNDO.
+objWorkbook = NEW Workbook(INPUT 'ABLExcelWriter.xlsx').
+
+NOTE:
+	Filename currently can not include a full path name, yet.
+
+METHODS:	
+Workbook:add_worksheet( name ) 
+
+DEFINE VARIABLE objWorksheet AS CLASS Worksheet NO-UNDO.
+objWorksheet = objWorkbook:add_worksheet('Sheet1').
+
+NOTE:
+	The name of the worksheet needs to be less than 32 characters.
+
+Workbook:add_Format().	
+
+Creates a format class object.
+		
+WorkSheet
+=========	
+
+
+
+Format
+======
+
+METHOD:
+Format:set_font_name( fontname ).
+Format:set_font_size( font size ).
+Format:set_bold().
+Format:set_italic().
+Format:set_undlerline(1|2|3|4).
+Format:set_font_strikeout().
+Format:set_font_script()
+Format:set_font_colour( colour | rgb hex code)
+Format:set_align( left|right|centre|fill|justify|center_across|distributed|justify_distributed|top|vcenter|bottom|vjustify|vdistributed).
+Format:set_rotation( angle of rotation )
+Format:set_indent( indent level )
+Format:set_shrink(  ) Not yet implemented.
+Format:set_bg_colour( colour | rgb hex code ) Not yet implemented.
+Format:set_fg_colour( colour | rgb hex code ) Not yet implemented.
