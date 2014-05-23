@@ -17,6 +17,10 @@ USING Progress.Json.ObjectModel.*.
 
 CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Workbook INHERITS xmlwriter:
 
+/**
+ * Workbook Class Object
+ */
+
     DEFINE PUBLIC PROPERTY filename            AS CHARACTER                    GET. PRIVATE SET.
     DEFINE PRIVATE PROPERTY TempDir             AS CHARACTER                    GET. SET.
     DEFINE PRIVATE PROPERTY sheetname           AS CHARACTER    INITIAL 'Sheet' GET. SET.

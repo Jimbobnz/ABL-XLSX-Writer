@@ -32,6 +32,8 @@ obj_Text_Format     = objWorkbook:add_format().
 obj_Text_Format:set_bold().
 /** Set the format's object alignment to 'right' align.**/
 obj_Text_Format:set_align('right').
+
+obj_Text_Format:set_font_colour('#FF3634').
 obj_DateTime_Format:set_align('center').
 /** Set the format's number format to day month year hours minutes and seconds **/
 obj_DateTime_Format:set_num_format('d mmm yyyy h:mm:ss').

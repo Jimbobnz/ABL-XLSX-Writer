@@ -461,6 +461,89 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Worksheet INHERITS xmlwriter:
     END.
 
 
+    METHOD PUBLIC VOID write_temp_table(INPUT in_row           AS INTEGER, 
+                                        INPUT in_col        AS INTEGER,
+                                        INPUT hn_temptable  AS HANDLE).
+
+            IF NOT VALID-HANDLE(hn_temptable) OR
+               NOT hn_temptable:type EQ 'TEMP-TABLE' THEN
+                RETURN.
+
+            DEFINE VARIABLE hn_Buffer AS HANDLE      NO-UNDO.
+            DEFINE VARIABLE hn_Query  AS HANDLE      NO-UNDO.
+            DEFINE VARIABLE in_Num_fields AS INTEGER     NO-UNDO.
+            DEFINE VARIABLE in_Field_Loop AS INTEGER     NO-UNDO.
+
+            DEFINE VARIABLE ch_field_value AS CHARACTER   NO-UNDO.
+
+            hn_Buffer = hn_temptable:DEFAULT-BUFFER-HANDLE.
+            in_Num_fields = hn_Buffer:NUM-FIELDS.
+
+            DO in_Field_Loop = 1 TO in_Num_fields :
+
+                ch_field_value = hn_Buffer:BUFFER-FIELD( in_Field_Loop ):COLUMN-LABEL.
+
+                IF LOGICAL(hn_Buffer:BUFFER-FIELD( in_Field_Loop ):EXTENT) THEN
+                    ch_field_value = SUBSTITUTE('&1 [&2]',
+                                                ch_field_value,
+                                                hn_Buffer:BUFFER-FIELD( in_Field_Loop ):EXTENT).
+
+                THIS-OBJECT:write(INPUT in_row,
+                                  INPUT in_col + (in_Field_Loop - 1),
+                                  INPUT ch_field_value ).
+
+            END.
+
+            CREATE QUERY hn_Query.
+            hn_Query:ADD-BUFFER(hn_Buffer).
+            hn_Query:QUERY-PREPARE( SUBSTITUTE('FOR EACH &1', hn_temptable:NAME ) ).
+            hn_Query:QUERY-OPEN().
+
+            IF hn_Query:IS-OPEN THEN
+            DO:
+
+                hn_Query:GET-FIRST() NO-ERROR.
+                REPEAT WHILE NOT hn_Query:QUERY-OFF-END:
+
+                    IF NOT hn_Buffer:AVAILABLE THEN 
+                        NEXT.
+
+                    PROCESS EVENTS.
+
+                    /** Next Row..**/
+                    in_row = in_row + 1.
+                    DO in_Field_Loop = 1 TO in_Num_fields:
+
+                        /** Can't handle arrays yet..**/
+
+                        IF LOGICAL(hn_Buffer:BUFFER-FIELD( in_Field_Loop ):EXTENT) THEN
+                            NEXT.
+
+                        CASE hn_Buffer:BUFFER-FIELD( in_Field_Loop ):DATA-TYPE:
+                            WHEN 'INTEGER' THEN
+                                THIS-OBJECT:write(INPUT in_row, 
+                                                  INPUT in_col + (in_Field_Loop - 1), 
+                                                  INPUT INTEGER(hn_Buffer:BUFFER-FIELD( in_Field_Loop ):BUFFER-VALUE())).
+                            WHEN 'DECIMAL' THEN
+                                THIS-OBJECT:write(INPUT in_row, 
+                                                  INPUT in_col + (in_Field_Loop - 1), 
+                                                  INPUT DECIMAL(hn_Buffer:BUFFER-FIELD( in_Field_Loop ):BUFFER-VALUE())).
+                            OTHERWISE
+                                    THIS-OBJECT:write(INPUT in_row,
+                                                      INPUT in_col + (in_Field_Loop - 1), 
+                                                      INPUT TRIM(STRING(hn_Buffer:BUFFER-FIELD( in_Field_Loop ):STRING-VALUE()))).
+                        END CASE.
+                    END.
+
+                    hn_Query:GET-NEXT() NO-ERROR.
+                END.
+
+                hn_Query:QUERY-CLOSE().
+            END.
+
+            DELETE OBJECT hn_Query.
+    END METHOD.
+
    METHOD PUBLIC VOID _assemble_xml_file():
 
         /** Write the workbook element. **/
