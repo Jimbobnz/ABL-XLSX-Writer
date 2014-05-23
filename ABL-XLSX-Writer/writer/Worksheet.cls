@@ -176,11 +176,11 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Worksheet INHERITS xmlwriter:
         IF chDataType EQ 'CHARACTER' THEN
             chVALUE = STRING( THIS-OBJECT:SharedStringTable:_get_shared_string_index( chVALUE ) ).
 
-        IF chDataType EQ 'DATETIME' THEN
-            OBJFormat:set_num_Format(INPUT 'd mmmm yyyy hh:mm:ss').
+/*         IF chDataType EQ 'DATETIME' THEN                            */
+/*             OBJFormat:set_num_Format(INPUT 'd mmmm yyyy hh:mm:ss'). */
 
-        IF chDataType EQ 'DECIMAL' THEN
-            OBJFormat:set_num_Format(INPUT '0.00'). /** Option Number 2**/
+/*         IF chDataType EQ 'DECIMAL' THEN                                    */
+/*             OBJFormat:set_num_Format(INPUT '0.00'). /** Option Number 2**/ */
 
         ASSIGN
             ttSheetData.Cell_Value  = chVALUE
@@ -575,8 +575,13 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Worksheet INHERITS xmlwriter:
                 
                 IF VALID-OBJECT(objFormatInstant) THEN
                 DO:
-                    IF objFormatInstant:_get_xf_index() NE 0 THEN
-                        hnSAXWriter:INSERT-ATTRIBUTE('s', STRING( objFormatInstant:_get_xf_index() ) ).
+
+                    DEFINE VARIABLE in_xf_Index AS INTEGER     NO-UNDO.
+
+                    in_xf_Index = objFormatInstant:_get_xf_index().
+
+/*                     IF objFormatInstant:_get_xf_index() NE 0 THEN */
+                        hnSAXWriter:INSERT-ATTRIBUTE('s', STRING( in_xf_Index ) ).
                 END.
                     
                 /** http://officeopenxml.com/SScontentOverview.php **/

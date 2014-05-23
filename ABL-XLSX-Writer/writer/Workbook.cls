@@ -22,8 +22,11 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Workbook INHERITS xmlwriter:
     DEFINE PRIVATE PROPERTY sheetname           AS CHARACTER    INITIAL 'Sheet' GET. SET.
     DEFINE PRIVATE PROPERTY sheetname_count     AS INTEGER      INITIAL 0       GET. SET.
     DEFINE PRIVATE PROPERTY num_format_count    AS INTEGER      INITIAL 0       GET. SET.
+    DEFINE PRIVATE PROPERTY format_count        AS INTEGER      INITIAL 0       GET. SET.
     DEFINE PUBLIC  PROPERTY SharedStringTable   AS CLASS SharedStringTable      GET. SET.
     DEFINE PUBLIC  PROPERTY xf_formats          AS HANDLE                       GET. PRIVATE SET.
+    
+    
 
     DEFINE PRIVATE PROPERTY xf_Format_indices   AS CLASS JSONOBJECT             GET. SET.
     DEFINE PRIVATE PROPERTY dxf_Format_indices  AS CLASS JSONOBJECT             GET. SET.
@@ -41,8 +44,11 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Workbook INHERITS xmlwriter:
             SheetID .
 
     DEFINE PRIVATE TEMP-TABLE ttxf_Formats NO-UNDO
-        FIELD ObjFormat  AS CLASS Progress.Lang.OBJECT 
-        INDEX ObjFormat IS PRIMARY
+        FIELD format_index  AS INTEGER
+        FIELD ObjFormat     AS CLASS Progress.Lang.OBJECT
+        INDEX idxIndex IS PRIMARY 
+            format_index
+        INDEX idxFormat 
             ObjFormat .
 
     DEFINE PRIVATE TEMP-TABLE ttProperties NO-UNDO 
@@ -60,7 +66,7 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Workbook INHERITS xmlwriter:
     DEFINE TEMP-TABLE ttNumFormats NO-UNDO XML-NODE-NAME 'numFmts'
         FIELD number_format_index AS INTEGER    XML-NODE-TYPE 'ATTRIBUTE' XML-NODE-NAME 'numFmtId' 
         FIELD format_code         AS CHARACTER  XML-NODE-TYPE 'ATTRIBUTE' XML-NODE-NAME 'formatCode'
-        INDEX idxnumFmtId   IS PRIMARY UNIQUE 
+        INDEX idxnumFmtId   IS PRIMARY  
             number_format_index
         INDEX idxFormatCode IS UNIQUE 
             format_code.
@@ -215,25 +221,51 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Workbook INHERITS xmlwriter:
         ob_Format = NEW Format(INPUT THIS-OBJECT:xf_Format_indices,
                                INPUT THIS-OBJECT:dxf_Format_indices).
 
+        THIS-OBJECT:format_count = THIS-OBJECT:format_count + 1.
+
         CREATE ttxf_Formats.
 
         ASSIGN
-             ttxf_Formats.OBJFormat = ob_Format.
+             ttxf_Formats.format_index = THIS-OBJECT:format_count
+             ttxf_Formats.OBJFormat    = ob_Format.
 
         RETURN ob_Format.
-
     END.
 
     METHOD PRIVATE VOID _prepare_format_properties():
 
+        MESSAGE '_prepare_formats()'.    
         THIS-OBJECT:_prepare_formats().
+        MESSAGE '_prepare_fonts()'.    
         THIS-OBJECT:_prepare_fonts().
+        MESSAGE '_prepare_num_formats()'.    
         THIS-OBJECT:_prepare_num_formats(). /** Number format/masks**/
+        MESSAGE '_prepare_borders()'.    
         THIS-OBJECT:_prepare_borders().
         THIS-OBJECT:_prepare_fills().
     END METHOD.
 
     METHOD PRIVATE VOID _prepare_formats():
+
+          /* Rearrange formats into index order.*/
+
+        DEFINE VARIABLE in_index            AS INTEGER     NO-UNDO.
+        DEFINE VARIABLE ob_format_instance  AS CLASS FORMAT NO-UNDO.
+            
+
+        DEFINE BUFFER ttxf_Formats FOR TEMP-TABLE ttxf_Formats.
+        DEFINE BUFFER xf_Formats FOR TEMP-TABLE ttxf_Formats.
+
+        FOR EACH ttxf_Formats:
+
+            ob_format_instance = CAST(ttxf_Formats.OBJFormat, format).
+            in_index = ob_format_instance:xf_index.
+
+            ASSIGN
+                ttxf_Formats.format_index = in_index.
+
+        END.
+    
     END METHOD.
 
     METHOD PRIVATE VOID _prepare_fonts():
@@ -295,7 +327,7 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Workbook INHERITS xmlwriter:
 
         DEFINE VARIABLE in_Index            AS INTEGER INITIAL 164  NO-UNDO.
         DEFINE VARIABLE ob_Format           AS CLASS format.
-        DEFINE VARIABLE num_format_count    AS INTEGER INITIAL 0    NO-UNDO.
+        DEFINE VARIABLE in_num_format_count AS INTEGER INITIAL 0    NO-UNDO.
         DEFINE VARIABLE ch_FormatCode       AS CHARACTER            NO-UNDO.
         DEFINE VARIABLE JSO_Num_Formats     AS CLASS JSONOBJECT     NO-UNDO.
         
@@ -318,7 +350,7 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Workbook INHERITS xmlwriter:
             ELSE
             DO:
                 JSO_Num_Formats:ADD(ch_FormatCode, in_Index).
-                ob_Format:num_format_index = in_Index.
+                ob_Format:num_format_index = in_Index. /*** Duck ***/
                 
                 CREATE ttNumFormats.
 
@@ -328,12 +360,12 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Workbook INHERITS xmlwriter:
 
                 in_Index = in_Index + 1.
             END.
+
+            in_num_format_count = in_num_format_count + 1.
+
+/*             ttxf_Formats.format_index = in_num_format_count. */
         
-    
-        
-            num_format_count = num_format_count + 1.
-        
-            THIS-OBJECT:num_format_count = num_format_count.
+            THIS-OBJECT:num_format_count = in_num_format_count.
         END.
 
     END METHOD.
@@ -349,8 +381,8 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Workbook INHERITS xmlwriter:
         DEFINE VARIABLE ObjClassInstance     AS CLASS Progress.Lang.Object .
         DEFINE VARIABLE ObjWorkSheetInstance AS CLASS worksheet.
             
+        MESSAGE '_prepare_format_properties()'.
         THIS-OBJECT:_prepare_format_properties().
-
 
         /** Create a new Worksheet if one has not been defined. **/
         IF NOT CAN-FIND(FIRST ttWorkSheet) THEN 
@@ -373,29 +405,35 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Workbook INHERITS xmlwriter:
         DEFINE VARIABLE chXMLFiles      AS CHARACTER    NO-UNDO.
         DEFINE VARIABLE objPackager     AS CLASS packager NO-UNDO.
         DEFINE VARIABLE INETIME         AS INTEGER     NO-UNDO.
-        
+        DEFINE VARIABLE chOSCOMMAND     AS CHARACTER   NO-UNDO.
+
         ETIME(true).
 
         THIS-OBJECT:_prepare_sst_string_data().
-        MESSAGE etime.
+        
         THIS-OBJECT:_prepare_vml().
-        MESSAGE etime.
+        
         THIS-OBJECT:_prepare_defined_names().
-        MESSAGE etime.
+        
         THIS-OBJECT:_prepare_drawings().
-        MESSAGE etime.
+        
         THIS-OBJECT:_add_chart_data().
-        MESSAGE etime.
+        
         THIS-OBJECT:_prepare_tables().
-        MESSAGE etime.
+        
+        MESSAGE 'NEW Package' etime.
         objPackager = NEW Packager().
 
         objPackager:_add_Workbook(THIS-OBJECT).
         objPackager:_set_tmpdir( THIS-OBJECT:TempDir ).
 
-        chXMLFiles = objPackager:_create_package().
+        MESSAGE '_create_package start' etime.
+         chXMLFiles = objPackager:_create_package().
+        MESSAGE '_create_package end' etime.
 
-        DEFINE VARIABLE chOSCOMMAND AS CHARACTER   NO-UNDO.
+        MESSAGE etime.
+
+        
 /*         OS-DELETE VALUE(THIS-OBJECT:filename). */
 
         FILE-INFO:FILE-NAME = '.'.
@@ -405,8 +443,10 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Workbook INHERITS xmlwriter:
                                  THIS-OBJECT:filename,
                                  chXMLFiles,
                                  FILE-INFO:FULL-PATHNAME).
+
+        message chOSCOMMAND.
         MESSAGE etime.
-        OS-COMMAND SILENT VALUE(chOSCOMMAND).
+        OS-COMMAND VALUE(chOSCOMMAND).
         MESSAGE etime.
 
         DELETE OBJECT objPackager.            
@@ -414,6 +454,7 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Workbook INHERITS xmlwriter:
 
     METHOD PRIVATE VOID _write_workbook():
             
+
         hnSAXWriter:START-ELEMENT('workbook').
 
         hnSAXWriter:DECLARE-NAMESPACE('http://schemas.openxmlformats.org/spreadsheetml/2006/main').

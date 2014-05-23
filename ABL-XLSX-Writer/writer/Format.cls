@@ -54,7 +54,7 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Format INHERITS xmlwriter:
     
     DEFINE PUBLIC PROPERTY fill_index          AS INTEGER              NO-UNDO GET. SET.  
     
-    DEFINE PUBLIC PROPERTY xf_index             AS INTEGER INITIAL ?   NO-UNDO GET. SET.  
+    DEFINE PUBLIC PROPERTY xf_index             AS INTEGER INITIAL 0   NO-UNDO GET. SET.  
 
     DEFINE PRIVATE PROPERTY named_colours       AS CLASS JsonObject     NO-UNDO GET. SET.
     DEFINE PRIVATE PROPERTY xf_Format_indices   AS CLASS JsonObject     NO-UNDO GET. SET.
@@ -71,7 +71,7 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Format INHERITS xmlwriter:
         THIS-OBJECT:xf_Format_indices  = in_xf_Format_indices.
         THIS-OBJECT:dxf_Format_indices = in_dxf_Format_indices.
         
-        THIS-OBJECT:xf_index = ?.
+/*         THIS-OBJECT:xf_index = ?. */
 
         THIS-OBJECT:font_name       = 'Calibri':U.
         THIS-OBJECT:font_size       = 11.
@@ -92,6 +92,7 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Format INHERITS xmlwriter:
         THIS-OBJECT:rotation        = 0.
         THIS-OBJECT:reading_order   = 0.
 
+        THIS-OBJECT:num_format_index = 0.
         THIS-OBJECT:num_format      = '0'.  /** See Excel for a list of number formats **/
 
         named_colours = NEW JsonObject().
@@ -120,7 +121,7 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Format INHERITS xmlwriter:
         DEFINE VARIABLE PropertyNames AS CHARACTER EXTENT NO-UNDO.
         DEFINE VARIABLE in_Index      AS INTEGER          NO-UNDO.
                     
-        IF THIS-OBJECT:xf_index NE ? THEN
+        IF LOGICAL(THIS-OBJECT:xf_index) THEN
             in_Index = THIS-OBJECT:xf_index.
         ELSE
         DO:
@@ -137,7 +138,7 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Format INHERITS xmlwriter:
                     in_Index = 1.
                 ELSE                    
                     in_Index = 1 + EXTENT(PropertyNames).
-
+                
                 THIS-OBJECT:xf_format_indices:ADD(INPUT key, 
                                                   INPUT in_Index).
 
@@ -222,7 +223,17 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Format INHERITS xmlwriter:
     END METHOD.
 
     METHOD PUBLIC CHARACTER _get_alignment_key():
-        RETURN ''.
+        DEFINE VARIABLE chKey AS CHARACTER   NO-UNDO.
+
+        chKey = THIS-OBJECT:_join(":",    THIS-OBJECT:text_h_align ).
+        chKey = THIS-OBJECT:_join(chKey,  THIS-OBJECT:text_v_align ).
+        chKey = THIS-OBJECT:_join(chKey,  THIS-OBJECT:indent ).
+        chKey = THIS-OBJECT:_join(chKey,  THIS-OBJECT:rotation ).
+        chKey = THIS-OBJECT:_join(chKey,  THIS-OBJECT:text_wrap ).
+        chKey = THIS-OBJECT:_join(chKey,  THIS-OBJECT:shrink ).
+        chKey = THIS-OBJECT:_join(chKey,  THIS-OBJECT:reading_order ).
+
+        RETURN chKey.
     END METHOD.        
     
     METHOD PUBLIC HANDLE _get_align_properties():

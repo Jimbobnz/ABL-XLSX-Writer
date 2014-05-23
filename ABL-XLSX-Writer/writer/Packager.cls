@@ -31,7 +31,7 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Packager:
     DESTRUCTOR Packager():
 
         /** Delete both the files contained within the directory and the directory itself**/
-        OS-DELETE VALUE( THIS-OBJECT:temp-dir  ) RECURSIVE.
+        OS-DELETE VALUE( THIS-OBJECT:temp-dir ) RECURSIVE.
     END.
 
     METHOD PUBLIC VOID _add_Workbook(INPUT workbook AS CLASS workbook):
@@ -66,12 +66,19 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Packager:
     END METHOD.
 
     METHOD PUBLIC CHARACTER  _create_package():
-
+        
+        MESSAGE '_write_worksheet_files()'.
         THIS-OBJECT:_write_worksheet_files().
-
+        
+        MESSAGE '_write_worksheet_files()'.
         THIS-OBJECT:_write_chartsheet_files().
+
+        MESSAGE '_write_workbook_file()'.
         THIS-OBJECT:_write_workbook_file().
+
+        MESSAGE '_write_chart_files()'.
         THIS-OBJECT:_write_chart_files().
+
         THIS-OBJECT:_write_drawing_files().
         THIS-OBJECT:_write_vml_files().
         THIS-OBJECT:_write_comment_files().
@@ -112,30 +119,35 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Packager:
         hnBuffer = hnTTWorksheets:DEFAULT-BUFFER-HANDLE.
         hnQuery:ADD-BUFFER( hnBuffer ).
         DEFINE VARIABLE chQueryWhere AS CHARACTER   NO-UNDO.
-        chQueryWhere = SUBSTITUTE('FOR EACH &1', hnTTWorksheets:name).
-        hnQuery:QUERY-PREPARE( chQueryWhere  ).
-        hnQuery:QUERY-OPEN().
-        hnQuery:GET-FIRST() NO-ERROR.       
-
-        REPEAT WHILE NOT hnQuery:QUERY-OFF-END:
-                         
-            /** Get the Class Object Handle.. **/
-            ObjWorkSheet = hnBuffer::ObjWorkSheet.
-            
-            /** Select the first work sheet as Selective Tab **/
-            IF NOT WorkSheetSelected THEN 
-            DO:
-                ObjWorkSheet:selected = TRUE.
-                WorkSheetSelected     = TRUE.
-            END.
-
-            ObjWorkSheet:_set_xml_writer( THIS-OBJECT:_filename( SUBSTITUTE('xl/worksheets/sheet&1.xml', hnBuffer::SheetID )) ).
-            ObjWorkSheet:_assemble_xml_file().
-
-            hnQuery:GET-NEXT() NO-ERROR.
-        END.
-        hnQuery:QUERY-CLOSE().
         
+        hnQuery:QUERY-PREPARE( 'FOR EACH ttWorkSheet'  ).
+        hnQuery:QUERY-OPEN().
+
+        IF hnQuery:IS-OPEN THEN
+        DO:
+
+            hnQuery:GET-FIRST() NO-ERROR.       
+    
+            REPEAT WHILE NOT hnQuery:QUERY-OFF-END:
+                             
+                /** Get the Class Object Handle.. **/
+                ObjWorkSheet = hnBuffer::ObjWorkSheet.
+                
+                /** Select the first work sheet as Selective Tab **/
+                IF NOT WorkSheetSelected THEN 
+                DO:
+                    ObjWorkSheet:selected = TRUE.
+                    WorkSheetSelected     = TRUE.
+                END.
+    
+                ObjWorkSheet:_set_xml_writer( THIS-OBJECT:_filename( SUBSTITUTE('xl/worksheets/sheet&1.xml', hnBuffer::SheetID )) ).
+                ObjWorkSheet:_assemble_xml_file().
+    
+                hnQuery:GET-NEXT() NO-ERROR.
+            END.
+            hnQuery:QUERY-CLOSE().
+        END.
+
         DELETE OBJECT hnQuery.
 
     END METHOD.
@@ -144,7 +156,10 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Packager:
     END METHOD.
 
     METHOD PUBLIC VOID _write_workbook_file():
+        
         THIS-OBJECT:Workbook:_set_xml_writer( THIS-OBJECT:_filename('xl/workbook.xml') ).
+
+        MESSAGE 'Workbook:_assemble_xml_file()'.
         THIS-OBJECT:Workbook:_assemble_xml_file().
     END METHOD.
 

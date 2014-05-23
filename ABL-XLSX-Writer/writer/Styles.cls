@@ -480,7 +480,7 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Styles INHERITS xmlwriter:
 
         CREATE QUERY hnQuery.
         hnQuery:ADD-BUFFER(hnxf_format).
-        hnQuery:QUERY-PREPARE('PRESELECT EACH ttxf_Formats').
+        hnQuery:QUERY-PREPARE('PRESELECT EACH ttxf_Formats BY ttxf_Formats.format_index').
         hnQuery:QUERY-OPEN().
 
         IF hnQuery:IS-OPEN THEN
@@ -526,7 +526,7 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Styles INHERITS xmlwriter:
         hnSAXWriter:INSERT-ATTRIBUTE('fillId',   STRING(ob_Format_Instance:fill_index) ).
         hnSAXWriter:INSERT-ATTRIBUTE('borderId', STRING(ob_Format_Instance:border_index) ).
 
-        IF LOGICAL(ob_Format_Instance:num_format_index)THEN
+        IF LOGICAL(ob_Format_Instance:num_format_index) THEN
             hnSAXWriter:INSERT-ATTRIBUTE('applyNumberFormat', '1' ).
 
         IF LOGICAL(ob_Format_Instance:font_index) THEN
