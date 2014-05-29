@@ -21,8 +21,9 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Worksheet INHERITS xmlwriter:
    
     
    DEFINE PUBLIC  PROPERTY SharedStringTable    AS CLASS SharedStringTable GET. SET. /** Object set by the workbook.cls **/
-   DEFINE PRIVATE PROPERTY Utility              AS CLASS Utility GET. SET. 
-
+   DEFINE PRIVATE PROPERTY Utility              AS CLASS Utility           GET. SET. 
+   DEFINE PRIVATE PROPERTY Workbook             AS CLASS Workbook          GET. SET. 
+      
    DEFINE PRIVATE PROPERTY dim_rowmin           AS INTEGER INITIAL ? GET. SET.
    DEFINE PRIVATE PROPERTY dim_colmin           AS INTEGER INITIAL ? GET. SET. 
    DEFINE PRIVATE PROPERTY dim_rowmax           AS INTEGER GET. SET. 
@@ -92,7 +93,9 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Worksheet INHERITS xmlwriter:
             CellRow
             CellCol.
     
-   CONSTRUCTOR Worksheet(INPUT pchWorkSheetName AS CHARACTER):
+   CONSTRUCTOR Worksheet(INPUT obj_Workbook     AS CLASS Workbook,
+                         INPUT pchWorkSheetName AS CHARACTER):
+        THIS-OBJECT:Workbook      = obj_Workbook.  
         THIS-OBJECT:worksheetname = pchWorkSheetName.
         THIS-OBJECT:Utility       = NEW Utility().
 
@@ -115,13 +118,15 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Worksheet INHERITS xmlwriter:
                                INPUT chVALUE    AS CHARACTER,
                                INPUT chDataType AS CHARACTER):
 
-        DEFINE VARIABLE OBJFormat AS CLASS Format.
-        
+        DEFINE VARIABLE ob_Format AS CLASS Format.
+
+        ob_Format = THIS-OBJECT:Workbook:add_Format().
+
         THIS-OBJECT:_write(INPUT in_Row,
                            INPUT in_Col,
                            INPUT chVALUE,
                            INPUT chDataType,
-                           INPUT OBJFormat).
+                           INPUT ob_Format).
 
    END METHOD.
 
@@ -129,7 +134,7 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Worksheet INHERITS xmlwriter:
                                INPUT in_Col     AS INTEGER,
                                INPUT chVALUE    AS CHARACTER,
                                INPUT chDataType AS CHARACTER,
-                               INPUT OBJFormat  AS CLASS Format):
+                               INPUT Obj_Format AS CLASS Format):
 
         DEFINE VARIABLE inShared_String_Index AS INTEGER     NO-UNDO.
 
@@ -142,6 +147,22 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Worksheet INHERITS xmlwriter:
 
         ASSIGN 
             ttSheetDataRow.CellRow = in_Row.
+        
+        IF VALID-OBJECT(Obj_Format) THEN
+        DO:
+            IF chDataType EQ 'DATETIME' AND Obj_Format:num_format EQ '0' THEN
+                Obj_Format:set_num_Format(INPUT 'd mmmm yyyy hh:mm:ss').
+            
+            IF chDataType EQ 'DECIMAL' AND Obj_Format:num_format EQ '0' THEN
+                Obj_Format:set_num_Format(INPUT '0.00'). /** Option Number 2**/
+            
+            IF chDataType EQ 'INTEGER' THEN
+                Obj_Format:set_num_Format(INPUT '0').    /** Option Number 1**/
+
+            IF chDataType EQ 'CHARACTER' AND Obj_Format:num_format EQ '0' THEN
+                Obj_Format:set_num_Format(INPUT 'General').    /** Option Number 1**/
+
+        END.            
 
         FIND ttSheetData
             WHERE ttSheetData.CellRow EQ in_Row
@@ -156,8 +177,8 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Worksheet INHERITS xmlwriter:
                 ttSheetData.CellRow   = in_Row   
                 ttSheetData.CellCol   = in_Col.
 
-            IF VALID-OBJECT(OBJFormat) THEN
-                ttSheetData.objformat = OBJFormat.
+            IF VALID-OBJECT(Obj_Format) THEN
+                ttSheetData.objformat = Obj_Format.
         END.
 
         IF dim_rowmin EQ ? THEN
@@ -171,16 +192,9 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Worksheet INHERITS xmlwriter:
         THIS-OBJECT:dim_rowmax  = MAXIMUM(THIS-OBJECT:dim_rowmax, in_Row).
         THIS-OBJECT:dim_colmax  = MAXIMUM(THIS-OBJECT:dim_colmax, in_Col).
 
-            
         /** For string optimization all string/character values go into a common string table.**/
         IF chDataType EQ 'CHARACTER' THEN
             chVALUE = STRING( THIS-OBJECT:SharedStringTable:_get_shared_string_index( chVALUE ) ).
-
-/*         IF chDataType EQ 'DATETIME' THEN                            */
-/*             OBJFormat:set_num_Format(INPUT 'd mmmm yyyy hh:mm:ss'). */
-
-/*         IF chDataType EQ 'DECIMAL' THEN                                    */
-/*             OBJFormat:set_num_Format(INPUT '0.00'). /** Option Number 2**/ */
 
         ASSIGN
             ttSheetData.Cell_Value  = chVALUE
@@ -237,8 +251,8 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Worksheet INHERITS xmlwriter:
                                  INPUT in_Last_Col   AS INTEGER,
                                  INPUT de_Witdh      AS DECIMAL):
 
-                    
         DEFINE VARIABLE ob_Col_Format AS CLASS FORMAT.
+        ob_Col_Format = THIS-OBJECT:Workbook:add_Format().
 
         THIS-OBJECT:set_column(INPUT in_First_Col,  
                                INPUT in_Last_Col,  
@@ -254,8 +268,6 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Worksheet INHERITS xmlwriter:
 
         DEFINE VARIABLE First_Col AS INTEGER   NO-UNDO.
         DEFINE VARIABLE Last_Col  AS INTEGER   NO-UNDO.
-
-
 
 /*        DEFINE PRIVATE TEMP-TABLE ttCols NO-UNDO SERIALIZE-NAME 'cols' */
 /*         FIELD min       AS INTEGER XML-NODE-NAME 'min'                */
@@ -299,20 +311,6 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Worksheet INHERITS xmlwriter:
    END METHOD.
 
 
-   METHOD PUBLIC VOID write (INPUT in_Row AS INTEGER,
-                              INPUT in_Col AS INTEGER,
-                              INPUT chVALUE AS CHARACTER):
-
-        IF (in_Row GT 1048576) OR
-           (in_Col GT 16384) THEN
-            RETURN.
-
-        THIS-OBJECT:_write(INPUT in_Row, 
-                           INPUT in_Col,
-                           INPUT chVALUE,
-                           INPUT 'CHARACTER').
-    END METHOD.
-
     METHOD PUBLIC VOID write (INPUT in_Row  AS INTEGER,
                               INPUT in_Col  AS INTEGER,
                               INPUT lgVALUE AS LOGICAL):
@@ -327,6 +325,24 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Worksheet INHERITS xmlwriter:
                            INPUT 'LOGICAL').
     END METHOD.
 
+    METHOD PUBLIC VOID write (INPUT in_Row  AS INTEGER,
+                              INPUT in_Col  AS INTEGER,
+                              INPUT chVALUE AS CHARACTER):
+
+        IF (in_Row GT 1048576) OR
+            (in_Col GT 16384) THEN
+            RETURN.
+        
+        DEFINE VARIABLE ob_Format AS CLASS FORMAT.
+        
+        ob_Format = THIS-OBJECT:Workbook:add_Format().
+        
+        THIS-OBJECT:write(INPUT in_Row,
+                          INPUT in_Col,
+                          INPUT chVALUE,
+                          INPUT ob_Format).
+    END METHOD.
+
     METHOD PUBLIC VOID write (INPUT in_Row      AS INTEGER,
                               INPUT in_Col      AS INTEGER,
                               INPUT chVALUE     AS CHARACTER,
@@ -335,33 +351,65 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Worksheet INHERITS xmlwriter:
         IF (in_Row GT 1048576) OR
            (in_Col GT 16384) THEN
             RETURN.
+        
+        IF chVALUE BEGINS '=' THEN
+        DO:
 
-        THIS-OBJECT:_write(INPUT in_Row, 
-                           INPUT in_Col,
-                           INPUT chVALUE,
-                           INPUT 'CHARACTER',
-                           INPUT objForamat).
+            chVALUE = REPLACE(chVALUE,'=','').
+
+            THIS-OBJECT:_write(INPUT in_Row, 
+                               INPUT in_Col,
+                               INPUT chVALUE,
+                               INPUT 'FORMULA',
+                               INPUT objForamat).
+        END.
+        ELSE
+            THIS-OBJECT:_write(INPUT in_Row, 
+                               INPUT in_Col,
+                               INPUT chVALUE,
+                               INPUT 'CHARACTER',
+                               INPUT objForamat).
+
     END METHOD.
 
-    METHOD PUBLIC VOID write (INPUT in_Row AS INTEGER,
-                              INPUT in_Col AS INTEGER,
-                              INPUT inVALUE AS INTEGER):
+    METHOD PUBLIC VOID write (INPUT in_Row      AS INTEGER,
+                              INPUT in_Col      AS INTEGER,
+                              INPUT inVALUE     AS INTEGER):
 
 
         IF (in_Row GT 1048576) OR
            (in_Col GT 16384) THEN
             RETURN.
 
+        DEFINE VARIABLE ob_Format AS CLASS FORMAT.
+
+        ob_Format = THIS-OBJECT:Workbook:add_Format().
+    
+        THIS-OBJECT:write(INPUT in_Row, 
+                          INPUT in_Col,
+                          INPUT inVALUE,
+                          INPUT ob_Format).
+    END METHOD.
+
+    METHOD PUBLIC VOID write (INPUT in_Row      AS INTEGER,
+                              INPUT in_Col      AS INTEGER,
+                              INPUT inVALUE     AS INTEGER,
+                              INPUT objForamat  AS CLASS FORMAT):
+
+        IF (in_Row GT 1048576) OR
+           (in_Col GT 16384) THEN
+            RETURN.
+    
         THIS-OBJECT:_write(INPUT in_Row, 
                            INPUT in_Col,
                            INPUT STRING(inVALUE),
-                           INPUT 'INTEGER').
+                           INPUT 'INTEGER',
+                           INPUT objForamat).
     END METHOD.
-
+    
     METHOD PUBLIC VOID write (INPUT in_Row   AS INTEGER,
                               INPUT in_Col   AS INTEGER,
-                              INPUT deVALUE AS DECIMAL):
-
+                              INPUT deVALUE  AS DECIMAL):
 
         IF (in_Row GT 1048576) OR
            (in_Col GT 16384) THEN
@@ -388,6 +436,8 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Worksheet INHERITS xmlwriter:
         ININTERVAL = INTERVAL(daVALUE, daEpocDate,'days') + 2.
 
         DEFINE VARIABLE ob_Format AS CLASS FORMAT.
+        
+        ob_Format = THIS-OBJECT:Workbook:add_Format().
 
         THIS-OBJECT:_write(INPUT in_Row, 
                            INPUT in_Col,
@@ -405,12 +455,12 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Worksheet INHERITS xmlwriter:
 
         DEFINE VARIABLE ob_Format AS CLASS FORMAT.
 
+        ob_Format = THIS-OBJECT:Workbook:add_Format().
+
         THIS-OBJECT:write(INPUT in_Row,
                           INPUT in_Col,
                           INPUT dt_Value,
                           INPUT ob_Format).
-
-
     END METHOD.
 
     METHOD PUBLIC VOID write (INPUT in_Row    AS INTEGER,
@@ -461,20 +511,23 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Worksheet INHERITS xmlwriter:
     END.
 
 
-    METHOD PUBLIC VOID write_temp_table(INPUT in_row           AS INTEGER, 
+    METHOD PUBLIC VOID write_temp_table(INPUT in_row        AS INTEGER, 
                                         INPUT in_col        AS INTEGER,
                                         INPUT hn_temptable  AS HANDLE).
+
+            /**
+            PUBLIC METHOD TO take the handle a converting it into excell Fields. 
+            */
 
             IF NOT VALID-HANDLE(hn_temptable) OR
                NOT hn_temptable:type EQ 'TEMP-TABLE' THEN
                 RETURN.
 
-            DEFINE VARIABLE hn_Buffer AS HANDLE      NO-UNDO.
-            DEFINE VARIABLE hn_Query  AS HANDLE      NO-UNDO.
-            DEFINE VARIABLE in_Num_fields AS INTEGER     NO-UNDO.
-            DEFINE VARIABLE in_Field_Loop AS INTEGER     NO-UNDO.
-
-            DEFINE VARIABLE ch_field_value AS CHARACTER   NO-UNDO.
+            DEFINE VARIABLE hn_Buffer       AS HANDLE      NO-UNDO.
+            DEFINE VARIABLE hn_Query        AS HANDLE      NO-UNDO.
+            DEFINE VARIABLE in_Num_fields   AS INTEGER     NO-UNDO.
+            DEFINE VARIABLE in_Field_Loop   AS INTEGER     NO-UNDO.
+            DEFINE VARIABLE ch_field_value  AS CHARACTER   NO-UNDO.
 
             hn_Buffer = hn_temptable:DEFAULT-BUFFER-HANDLE.
             in_Num_fields = hn_Buffer:NUM-FIELDS.
@@ -637,7 +690,7 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Worksheet INHERITS xmlwriter:
    METHOD PRIVATE VOID _write_rows():
 
         DEFINE VARIABLE ob_format        AS CLASS FORMAT.
-        DEFINE VARIABLE objFormatInstant AS CLASS Format.
+        DEFINE VARIABLE obj_Format_Instant AS CLASS Format.
 
         THIS-OBJECT:_calculate_spans().
 
@@ -654,16 +707,16 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Worksheet INHERITS xmlwriter:
                 hnSAXWriter:START-ELEMENT('c').
                 hnSAXWriter:INSERT-ATTRIBUTE('r', THIS-OBJECT:Utility:xl_rowcol_to_cell(ttSheetData.CellRow, ttSheetData.CellCol)).
 
-                objFormatInstant = CAST(ttSheetData.ObjFormat , format ).
+                obj_Format_Instant = CAST(ttSheetData.ObjFormat , format ).
                 
-                IF VALID-OBJECT(objFormatInstant) THEN
+                IF VALID-OBJECT(obj_Format_Instant) THEN
                 DO:
 
                     DEFINE VARIABLE in_xf_Index AS INTEGER     NO-UNDO.
 
-                    in_xf_Index = objFormatInstant:_get_xf_index().
+                    in_xf_Index = obj_Format_Instant:_get_xf_index().
 
-/*                     IF objFormatInstant:_get_xf_index() NE 0 THEN */
+/*                     IF obj_Format_Instant:_get_xf_index() NE 0 THEN */
                         hnSAXWriter:INSERT-ATTRIBUTE('s', STRING( in_xf_Index ) ).
                 END.
                     
@@ -685,15 +738,18 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Worksheet INHERITS xmlwriter:
                         hnSAXWriter:INSERT-ATTRIBUTE('t', 'n'). /** n = number**/
                     WHEN 'LOGICAL' THEN
                         hnSAXWriter:INSERT-ATTRIBUTE('t', 'b'). /** b = boolian **/
-/*                     WHEN 'DATE' THEN                                             */
-/*                         hnSAXWriter:INSERT-ATTRIBUTE('t', 'd'). /** d = date **/ */
-/*                     WHEN 'DATETIME' THEN                                         */
-/*                         hnSAXWriter:INSERT-ATTRIBUTE('t', 'd'). /** d = date **/ */
+                    WHEN 'FORMULA' THEN
+                        hnSAXWriter:INSERT-ATTRIBUTE('t', 'str'). /** str = inline string **/
                     OTHERWISE
-                        hnSAXWriter:INSERT-ATTRIBUTE('t', 'n'). /** b = boolian **/
+                        hnSAXWriter:INSERT-ATTRIBUTE('t', 'n'). /** n = number **/
                 END CASE.
 
-                hnSAXWriter:WRITE-DATA-ELEMENT('v', ttSheetData.Cell_Value).
+                IF ttSheetData.DatATYPE EQ 'FORMULA' THEN
+                    hnSAXWriter:WRITE-DATA-ELEMENT('f', ttSheetData.Cell_Value).
+                ELSE
+                    IF ttSheetData.Cell_Value NE '' THEN
+                        hnSAXWriter:WRITE-DATA-ELEMENT('v', ttSheetData.Cell_Value).
+
                 hnSAXWriter:END-ELEMENT('c').
        
             END.

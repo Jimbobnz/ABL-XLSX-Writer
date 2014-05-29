@@ -14,6 +14,7 @@
 
 USING ABL-XLSX-Writer.ABL-XLSX-Writer.writer.*.
 USING Progress.Json.ObjectModel.*.
+USING System.IO.Compression.* FROM ASSEMBLY.
 
 CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Workbook INHERITS xmlwriter:
 
@@ -116,8 +117,8 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Workbook INHERITS xmlwriter:
 
         THIS-OBJECT:xf_formats         = TEMP-TABLE ttxf_Formats:HANDLE.
         
-        /** Load the defaults Formats etc. **/
-        THIS-OBJECT:add_Format().
+/*         /** Load the defaults Formats etc. **/ */
+/*         THIS-OBJECT:add_Format().              */
         
     END CONSTRUCTOR.
 
@@ -181,7 +182,8 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Workbook INHERITS xmlwriter:
         
         THIS-OBJECT:sheetname_count = THIS-OBJECT:sheetname_count + 1.
         
-        ObjNewWorkSheet = NEW Worksheet(INPUT pcSheetName).
+        ObjNewWorkSheet = NEW Worksheet(INPUT THIS-OBJECT,
+                                        INPUT pcSheetName).
         
         /** Share the Global Shared String Table Class Object. In Theory 
             there should only ever be one instance of the class object. **/
@@ -199,7 +201,8 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Workbook INHERITS xmlwriter:
     END METHOD.
 
     METHOD PUBLIC VOID close():
-        THIS-OBJECT:_store_workbook().
+        THIS-OBJECT:_store_workbook
+            ().
     END METHOD.
 
     METHOD PUBLIC HANDLE worksheets():
@@ -256,20 +259,32 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Workbook INHERITS xmlwriter:
         DEFINE VARIABLE in_index            AS INTEGER     NO-UNDO.
         DEFINE VARIABLE ob_format_instance  AS CLASS FORMAT NO-UNDO.
             
+        DEFINE VARIABLE ob_format_temp  AS CLASS FORMAT NO-UNDO.
 
-        DEFINE BUFFER ttxf_Formats FOR TEMP-TABLE ttxf_Formats.
-        DEFINE BUFFER xf_Formats FOR TEMP-TABLE ttxf_Formats.
+        DEFINE BUFFER ttxf_Formats  FOR TEMP-TABLE ttxf_Formats.
+        DEFINE BUFFER xf_Formats    FOR TEMP-TABLE ttxf_Formats.
+        
+        
 
         FOR EACH ttxf_Formats:
 
             ob_format_instance = CAST(ttxf_Formats.OBJFormat, format).
             in_index = ob_format_instance:xf_index.
+            
+            ttxf_Formats.format_index = in_index.
 
-            ASSIGN
-                ttxf_Formats.format_index = in_index.
+/*             /** Swap things around..**/                              */
+/*             FOR FIRST xf_Formats                                     */
+/*                 WHERE xf_Formats.format_index EQ in_index:           */
+/*                                                                      */
+/*                 ob_format_temp = CAST(xf_Formats.OBJFormat, format). */
+/*                 xf_Formats.OBJFORMAT = ob_format_instance.           */
+/*                                                                      */
+/*             END.                                                     */
+
 
         END.
-    
+
     END METHOD.
 
     METHOD PRIVATE VOID _prepare_fonts():
@@ -367,8 +382,6 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Workbook INHERITS xmlwriter:
 
             in_num_format_count = in_num_format_count + 1.
 
-/*             ttxf_Formats.format_index = in_num_format_count. */
-        
             THIS-OBJECT:num_format_count = in_num_format_count.
         END.
 
@@ -437,12 +450,26 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Workbook INHERITS xmlwriter:
 
         MESSAGE etime.
 
+        DEFINE VARIABLE obj_Zip     AS  ZipFile NO-UNDO.
+        DEFINE VARIABLE zipPath     AS CHARACTER   NO-UNDO.
+        DEFINE VARIABLE startPath   AS CHARACTER   NO-UNDO.
+         
+        FILE-INFO:FILE-NAME = '.'.
         
+        startPath   = FILE-INFO:FULL-PATHNAME + "/temp/ablxml".
+        zipPath     = FILE-INFO:FULL-PATHNAME + "/ablxml.zip".
+        
+        OS-DELETE VALUE(THIS-OBJECT:filename).
+        
+/*         ZipFile:CreateFromDirectory(objPackager:temp-dir, THIS-OBJECT:filename). */
+/*                                                                                  */
+
+
 /*         OS-DELETE VALUE(THIS-OBJECT:filename). */
 
         FILE-INFO:FILE-NAME = '.'.
 
-        chOSCOMMAND = SUBSTITUTE('cd "&1"&&&&&4/zip -S -r &4/&2 &3', 
+        chOSCOMMAND = SUBSTITUTE('cd "&1"&&&&&4/zip -S -r &4/&2 &3',
                                  objPackager:temp-dir,
                                  THIS-OBJECT:filename,
                                  chXMLFiles,
@@ -544,6 +571,9 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Workbook INHERITS xmlwriter:
 
         hnSAXWriter:WRITE-EMPTY-ELEMENT('calcPr').
         hnSAXWriter:INSERT-ATTRIBUTE('calcId', '145621').
+
+        hnSAXWriter:INSERT-ATTRIBUTE('calcMode', 'autoNoTable').
+        hnSAXWriter:INSERT-ATTRIBUTE('fullCalcOnLoad', STRING(TRUE,'1/0')).
 
     END METHOD.
 

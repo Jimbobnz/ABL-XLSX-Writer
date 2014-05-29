@@ -480,7 +480,7 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Styles INHERITS xmlwriter:
 
         CREATE QUERY hnQuery.
         hnQuery:ADD-BUFFER(hnxf_format).
-        hnQuery:QUERY-PREPARE('PRESELECT EACH ttxf_Formats BY ttxf_Formats.format_index').
+        hnQuery:QUERY-PREPARE('PRESELECT EACH ttxf_Formats BREAK BY ttxf_Formats.format_index').
         hnQuery:QUERY-OPEN().
 
         IF hnQuery:IS-OPEN THEN
@@ -488,11 +488,18 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Styles INHERITS xmlwriter:
             
             hnSAXWriter:START-ELEMENT('cellXfs').
             hnSAXWriter:INSERT-ATTRIBUTE('count', STRING( hnQuery:NUM-RESULTS ) ).
-        
+            
             hnQuery:GET-FIRST() NO-ERROR.
+
+/*             hnSAXWriter:WRITE-COMMENT('ttxf_Formats.format_index: ' + STRING( hnxf_format::format_index ) ). */
+
             REPEAT WHILE NOT hnQuery:QUERY-OFF-END:
-                obFormatInstance = hnxf_format::ObjFormat.
-                THIS-OBJECT:_write_xf(INPUT obFormatInstance).
+
+                IF hnQuery:FIRST-OF ( 1 ) THEN
+                DO:
+                    obFormatInstance = hnxf_format::ObjFormat.
+                    THIS-OBJECT:_write_xf(INPUT obFormatInstance).
+                END.
                 hnQuery:GET-NEXT() NO-ERROR.
             END.
 
@@ -520,6 +527,8 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Styles INHERITS xmlwriter:
             hnSAXWriter:START-ELEMENT('xf').
         ELSE
             hnSAXWriter:WRITE-EMPTY-ELEMENT('xf').
+    
+        hnSAXWriter:INSERT-ATTRIBUTE('Id',  STRING(ob_Format_Instance:xf_index) ). 
 
         hnSAXWriter:INSERT-ATTRIBUTE('numFmtId', STRING(ob_Format_Instance:num_format_index) ).
         hnSAXWriter:INSERT-ATTRIBUTE('fontId',   STRING(ob_Format_Instance:font_index) ).
