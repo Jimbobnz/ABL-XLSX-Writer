@@ -34,6 +34,7 @@ obj_Text_Format:set_bold().
 obj_Text_Format:set_align('right').
 
 obj_Text_Format:set_font_colour('#FF3634').
+
 obj_DateTime_Format:set_align('center').
 /** Set the format's number format to day month year hours minutes and seconds **/
 obj_DateTime_Format:set_num_format('d mmm yyyy h:mm:ss').
@@ -42,7 +43,7 @@ obj_DateTime_Format:set_num_format('d mmm yyyy h:mm:ss').
 objWorksheet:write(1,1,'Formatted Date:', obj_Text_Format).
 
 /** Write the DATETIME variable to row 1, column 2 ('A2') and apply it's formatting..**/
-objWorksheet:write(1,2, da_date_time_now, obj_DateTime_Format).
+objWorksheet:write(1,2, da_date_time_now).
 
 /** Set the column with for both column 1 & 2 to size 30.**/
 objWorksheet:set_column(1,2,30).

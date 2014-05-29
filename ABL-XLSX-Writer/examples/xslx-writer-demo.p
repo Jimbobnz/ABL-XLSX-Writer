@@ -1,4 +1,4 @@
-USING ABLOOXML.ABLExcelWriter.*.
+USING ABL-XLSX-Writer\ABL-XLSX-Writer.writer*.
 
 DEFINE VARIABLE objWorkbook     AS CLASS Workbook   NO-UNDO.
 DEFINE VARIABLE objWorksheet    AS CLASS Worksheet  NO-UNDO.
