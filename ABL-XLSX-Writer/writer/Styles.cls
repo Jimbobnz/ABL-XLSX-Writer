@@ -528,7 +528,7 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Styles INHERITS xmlwriter:
         ELSE
             hnSAXWriter:WRITE-EMPTY-ELEMENT('xf').
     
-        hnSAXWriter:INSERT-ATTRIBUTE('Id',  STRING(ob_Format_Instance:xf_index) ). 
+/*         hnSAXWriter:INSERT-ATTRIBUTE('Id',  STRING(ob_Format_Instance:xf_index) ). */
 
         hnSAXWriter:INSERT-ATTRIBUTE('numFmtId', STRING(ob_Format_Instance:num_format_index) ).
         hnSAXWriter:INSERT-ATTRIBUTE('fontId',   STRING(ob_Format_Instance:font_index) ).
