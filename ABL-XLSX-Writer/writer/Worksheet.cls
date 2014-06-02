@@ -14,50 +14,76 @@
 
 USING ABL-XLSX-Writer.ABL-XLSX-Writer.writer.*.
 
+&SCOPED-DEFINE da_EpocDate DATE(1,1,1900)
+&SCOPED-DEFINE ximillisecondsInDay   0x5265C00 
+
 CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Worksheet INHERITS xmlwriter:
     
-   DEFINE PUBLIC PROPERTY worksheetname AS CHARACTER GET. SET.
-   DEFINE PUBLIC PROPERTY optimization  AS LOGICAL INITIAL TRUE  GET. SET.
-   
+   DEFINE PUBLIC PROPERTY worksheetname             AS CHARACTER GET. SET.
+   DEFINE PUBLIC PROPERTY optimization              AS LOGICAL INITIAL TRUE  GET. SET.
     
-   DEFINE PUBLIC  PROPERTY SharedStringTable    AS CLASS SharedStringTable GET. SET. /** Object set by the workbook.cls **/
-   DEFINE PRIVATE PROPERTY Utility              AS CLASS Utility           GET. SET. 
-   DEFINE PRIVATE PROPERTY Workbook             AS CLASS Workbook          GET. SET. 
+   DEFINE PUBLIC  PROPERTY SharedStringTable        AS CLASS SharedStringTable GET. SET. /** Object set by the workbook.cls **/
+   DEFINE PRIVATE PROPERTY Utility                  AS CLASS Utility           GET. SET. 
+   DEFINE PRIVATE PROPERTY Workbook                 AS CLASS Workbook          GET. SET. 
       
-   DEFINE PRIVATE PROPERTY dim_rowmin           AS INTEGER INITIAL ? GET. SET.
-   DEFINE PRIVATE PROPERTY dim_colmin           AS INTEGER INITIAL ? GET. SET. 
-   DEFINE PRIVATE PROPERTY dim_rowmax           AS INTEGER GET. SET. 
-   DEFINE PRIVATE PROPERTY dim_colmax           AS INTEGER GET. SET. 
-   DEFINE PRIVATE PROPERTY span                 AS CHARACTER GET. SET.
+   DEFINE PRIVATE PROPERTY dim_rowmin               AS INTEGER INITIAL ? GET. SET.
+   DEFINE PRIVATE PROPERTY dim_colmin               AS INTEGER INITIAL ? GET. SET. 
+   DEFINE PRIVATE PROPERTY dim_rowmax               AS INTEGER GET. SET. 
+   DEFINE PRIVATE PROPERTY dim_colmax               AS INTEGER GET. SET. 
+   DEFINE PRIVATE PROPERTY span                     AS CHARACTER GET. SET.
    
     /** View Attributes **/
-    DEFINE PUBLIC PROPERTY showGridLines        AS LOGICAL NO-UNDO  GET. PRIVATE SET. 
-    DEFINE PUBLIC PROPERTY show_zeros           AS LOGICAL NO-UNDO  GET. PRIVATE SET.
-    DEFINE PUBLIC PROPERTY is_right_to_left     AS LOGICAL NO-UNDO  GET. PRIVATE SET.
-    DEFINE PUBLIC PROPERTY selected             AS LOGICAL NO-UNDO  GET. SET.
-    DEFINE PUBLIC PROPERTY outline_on           AS LOGICAL NO-UNDO  GET. PRIVATE SET.
-    DEFINE PUBLIC PROPERTY page_view            AS LOGICAL NO-UNDO  GET. PRIVATE SET.    
-    DEFINE PUBLIC PROPERTY zoom                 AS INTEGER NO-UNDO  GET. PRIVATE SET.    
-    DEFINE PUBLIC PROPERTY zoom_scale_normal    AS LOGICAL NO-UNDO  GET. PRIVATE SET.    
+    DEFINE PUBLIC PROPERTY showGridLines            AS LOGICAL NO-UNDO  GET. PRIVATE SET. 
+    DEFINE PUBLIC PROPERTY show_zeros               AS LOGICAL NO-UNDO  GET. PRIVATE SET.
+    DEFINE PUBLIC PROPERTY is_right_to_left         AS LOGICAL NO-UNDO  GET. PRIVATE SET.
+    DEFINE PUBLIC PROPERTY selected                 AS LOGICAL NO-UNDO  GET. SET.
+    DEFINE PUBLIC PROPERTY outline_on               AS LOGICAL NO-UNDO  GET. PRIVATE SET.
+    DEFINE PUBLIC PROPERTY page_view                AS LOGICAL NO-UNDO  GET. PRIVATE SET.    
+    DEFINE PUBLIC PROPERTY zoom                     AS INTEGER NO-UNDO  GET. PRIVATE SET.    
+    DEFINE PUBLIC PROPERTY zoom_scale_normal        AS LOGICAL NO-UNDO  GET. PRIVATE SET.    
 
     /** sheetFormatPr Attributes **/
-    DEFINE PUBLIC PROPERTY default_row_height AS INTEGER INITIAL 15     NO-UNDO GET. PRIVATE SET.
-    DEFINE PUBLIC PROPERTY default_row_zeroed AS LOGICAL                NO-UNDO GET. PRIVATE SET.
-    DEFINE PUBLIC PROPERTY outline_row_level  AS INTEGER INITIAL 0      NO-UNDO GET. PRIVATE SET.
-    DEFINE PUBLIC PROPERTY outline_col_level  AS INTEGER INITIAL 0      NO-UNDO GET. PRIVATE SET.
-    DEFINE PUBLIC PROPERTY excel_version      AS INTEGER INITIAL 2007   NO-UNDO GET. PRIVATE SET.
-    DEFINE PUBLIC PROPERTY tab_colour         AS CHARACTER              NO-UNDO GET. PRIVATE SET.
+    DEFINE PUBLIC PROPERTY default_row_height       AS INTEGER INITIAL 15     NO-UNDO GET. PRIVATE SET.
+    DEFINE PUBLIC PROPERTY default_row_zeroed       AS LOGICAL                NO-UNDO GET. PRIVATE SET.
+    DEFINE PUBLIC PROPERTY outline_row_level        AS INTEGER INITIAL 0      NO-UNDO GET. PRIVATE SET.
+    DEFINE PUBLIC PROPERTY outline_col_level        AS INTEGER INITIAL 0      NO-UNDO GET. PRIVATE SET.
+    DEFINE PUBLIC PROPERTY excel_version            AS INTEGER INITIAL 2007   NO-UNDO GET. PRIVATE SET.
+    DEFINE PUBLIC PROPERTY tab_colour               AS CHARACTER              NO-UNDO GET. PRIVATE SET.
     
     /** pageSetup Attributes **/
-    DEFINE PUBLIC PROPERTY paperSize    AS INTEGER   NO-UNDO                    GET. SET.
-    DEFINE PUBLIC PROPERTY print_scale  AS INTEGER   NO-UNDO INITIAL 100        GET. SET.
-    DEFINE PUBLIC PROPERTY orientation  AS CHARACTER NO-UNDO INITIAL 'portrait' GET. SET.
+    DEFINE PUBLIC PROPERTY paper_size                AS INTEGER   NO-UNDO                   GET. PRIVATE SET.
+    
+    DEFINE PUBLIC PROPERTY print_scale              AS INTEGER   NO-UNDO INITIAL 100        GET. SET.
+    DEFINE PUBLIC PROPERTY orientation              AS CHARACTER NO-UNDO INITIAL 'portrait' GET. SET.
+    DEFINE PUBLIC PROPERTY page_setup_changed       AS LOGICAL   NO-UNDO  GET. PRIVATE SET.    
+    DEFINE PUBLIC PROPERTY print_options_changed    AS LOGICAL   NO-UNDO  GET. PRIVATE SET.  
+    
+    DEFINE PUBLIC PROPERTY margin_left              AS DECIMAL NO-UNDO GET. PRIVATE SET.  
+    DEFINE PUBLIC PROPERTY margin_right             AS DECIMAL NO-UNDO GET. PRIVATE SET.  
+    DEFINE PUBLIC PROPERTY margin_top               AS DECIMAL NO-UNDO GET. PRIVATE SET.
+    DEFINE PUBLIC PROPERTY margin_bottom            AS DECIMAL NO-UNDO GET. PRIVATE SET.
+    DEFINE PUBLIC PROPERTY margin_footer            AS DECIMAL NO-UNDO GET. PRIVATE SET.
+    DEFINE PUBLIC PROPERTY margin_header            AS DECIMAL NO-UNDO GET. PRIVATE SET.
+
+    DEFINE PUBLIC PROPERTY vcenter                  AS LOGICAL   NO-UNDO GET. PRIVATE SET.      
+    DEFINE PUBLIC PROPERTY hcenter                  AS LOGICAL   NO-UNDO GET. PRIVATE SET.      
+    
+    DEFINE PUBLIC PROPERTY header_footer_changed    AS LOGICAL   NO-UNDO GET. PRIVATE SET.
+    DEFINE PUBLIC PROPERTY print_headers            AS LOGICAL   NO-UNDO GET. PRIVATE SET.
+    DEFINE PUBLIC PROPERTY header                   AS CHARACTER NO-UNDO GET. PRIVATE SET.
+    DEFINE PUBLIC PROPERTY footer                   AS CHARACTER NO-UNDO GET. PRIVATE SET.
+    
+    DEFINE PUBLIC PROPERTY print_gridlines          AS LOGICAL   NO-UNDO GET. PRIVATE SET.
+    DEFINE PUBLIC PROPERTY screen_gridlines         AS LOGICAL   NO-UNDO GET. PRIVATE SET.
+    
+    
+    
 
     DEFINE PRIVATE TEMP-TABLE ttCols NO-UNDO SERIALIZE-NAME 'cols'
-        FIELD min       AS INTEGER XML-NODE-TYPE 'ATTRIBUTE' XML-NODE-NAME 'min'
-        FIELD max       AS INTEGER XML-NODE-TYPE 'ATTRIBUTE' XML-NODE-NAME 'max'
-        FIELD width     AS DECIMAL XML-NODE-TYPE 'ATTRIBUTE' XML-NODE-NAME 'width'
-        FIELD objformat AS CLASS Progress.Lang.OBJECT 
+        FIELD min           AS INTEGER      XML-NODE-TYPE 'ATTRIBUTE' XML-NODE-NAME 'min'
+        FIELD max           AS INTEGER      XML-NODE-TYPE 'ATTRIBUTE' XML-NODE-NAME 'max'
+        FIELD width         AS DECIMAL      XML-NODE-TYPE 'ATTRIBUTE' XML-NODE-NAME 'width'
+        FIELD objformat     AS CLASS Progress.Lang.OBJECT 
         INDEX idxCols is PRIMARY UNIQUE
             min
             max.
@@ -99,37 +125,43 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Worksheet INHERITS xmlwriter:
         THIS-OBJECT:worksheetname = pchWorkSheetName.
         THIS-OBJECT:Utility       = NEW Utility().
 
-        THIS-OBJECT:zoom = 100. /** Default the zoom to 100% **/
+        THIS-OBJECT:zoom                    = 100. /** Default the zoom to 100% **/
         
-        THIS-OBJECT:optimization = FALSE.
+        THIS-OBJECT:optimization            = FALSE.
 
-        THIS-OBJECT:default_row_height = 15.
-        THIS-OBJECT:default_row_zeroed = FALSE.
-        THIS-OBJECT:outline_row_level  = 0.
-        THIS-OBJECT:outline_col_level  = 0.
-        THIS-OBJECT:excel_version      = 2007. /** Default to Microsoft Excel 2007**/
-        THIS-OBJECT:showGridLines    = TRUE.
-        THIS-OBJECT:show_zeros       = TRUE.
-        THIS-OBJECT:tab_colour       = ''.
+        THIS-OBJECT:default_row_height      = 15.
+        THIS-OBJECT:default_row_zeroed      = FALSE.
+        THIS-OBJECT:outline_row_level       = 0.
+        THIS-OBJECT:outline_col_level       = 0.
+        THIS-OBJECT:excel_version           = 2007. /** Default to Microsoft Excel 2007**/
+        THIS-OBJECT:showGridLines           = TRUE.
+        THIS-OBJECT:show_zeros              = TRUE.
+        THIS-OBJECT:tab_colour              = ''.
+
+        THIS-OBJECT:page_setup_changed      = FALSE.
+        THIS-OBJECT:paper_size              = 0.
+        THIS-OBJECT:orientation             = 'portrait'.
+
+        THIS-OBJECT:print_options_changed   = FALSE.
+        THIS-OBJECT:hcenter                 = FALSE.
+        THIS-OBJECT:vcenter                 = FALSE.
+        THIS-OBJECT:print_gridlines         = FALSE.
+        THIS-OBJECT:screen_gridlines        = TRUE.
+        THIS-OBJECT:print_headers           = FALSE.
+
+        THIS-OBJECT:header_footer_changed   = FALSE.
+        THIS-OBJECT:header                  = ''.
+        THIS-OBJECT:footer                  = ''.
+
+        THIS-OBJECT:margin_left             = .7.
+        THIS-OBJECT:margin_right            = .7.
+        THIS-OBJECT:margin_top              = .75.
+        THIS-OBJECT:margin_bottom           = .75.
+        THIS-OBJECT:margin_header           = .3.
+        THIS-OBJECT:margin_footer           = .3.
+
    END CONSTRUCTOR.
     
-   METHOD PRIVATE VOID _write (INPUT in_Row     AS INTEGER,
-                               INPUT in_Col     AS INTEGER,
-                               INPUT chVALUE    AS CHARACTER,
-                               INPUT chDataType AS CHARACTER):
-
-        DEFINE VARIABLE ob_Format AS CLASS Format.
-
-        ob_Format = THIS-OBJECT:Workbook:add_Format().
-
-        THIS-OBJECT:_write(INPUT in_Row,
-                           INPUT in_Col,
-                           INPUT chVALUE,
-                           INPUT chDataType,
-                           INPUT ob_Format).
-
-   END METHOD.
-
    METHOD PRIVATE VOID _write (INPUT in_Row     AS INTEGER,
                                INPUT in_Col     AS INTEGER,
                                INPUT chVALUE    AS CHARACTER,
@@ -204,6 +236,126 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Worksheet INHERITS xmlwriter:
     METHOD PUBLIC VOID set_tab_color(INPUT pch_tab_colour AS CHARACTER):
         THIS-OBJECT:tab_colour = THIS-OBJECT:Utility:xl_colour(INPUT pch_tab_colour).
     END METHOD.
+
+    METHOD PUBLIC VOID protect (INPUT pch_password AS CHARACTER):
+    END METHOD.
+
+/* ########################################################################### */
+/* #                                                                           */
+/* # Public API. Page Setup methods.                                           */
+/* #                                                                           */
+/* ########################################################################### */
+
+    METHOD PUBLIC VOID set_landscape():
+        THIS-OBJECT:orientation        = 'landscape'.
+        THIS-OBJECT:page_setup_changed = TRUE.
+    END METHOD.
+
+    METHOD PUBLIC VOID set_portrait():
+        THIS-OBJECT:orientation        = 'portrait'.
+        THIS-OBJECT:page_setup_changed = TRUE.
+    END METHOD.
+
+    METHOD PUBLIC VOID set_page_view():
+        THIS-OBJECT:page_view = TRUE.
+    END METHOD.
+    
+    METHOD PUBLIC VOID set_paper(INPUT pc_paper_size AS CHARACTER):
+         THIS-OBJECT:paper_size         = paper_size.
+         THIS-OBJECT:page_setup_changed = TRUE.
+    END METHOD.
+    
+    METHOD PUBLIC VOID center_horizontally():
+        THIS-OBJECT:hcenter               = TRUE.
+        THIS-OBJECT:print_options_changed = TRUE.
+    END METHOD.
+
+    METHOD PUBLIC VOID center_vertically():
+        THIS-OBJECT:vcenter               = TRUE.
+        THIS-OBJECT:print_options_changed = TRUE.
+    END METHOD.
+
+    METHOD PUBLIC VOID set_margins (INPUT in_left   AS DECIMAL,
+                                    INPUT in_Right  AS DECIMAL, 
+                                    INPUT in_top    AS DECIMAL,
+                                    INPUT in_Bottom AS DECIMAL):
+
+        /** Assign to the defaults.**/
+        ASSIGN  in_left   = 0.75 WHEN (NOT LOGICAL(in_left)).
+        ASSIGN  in_Right  = 0.75 WHEN (NOT LOGICAL(in_Right)).
+        ASSIGN  in_top    = 0.75 WHEN (NOT LOGICAL(in_top)).
+        ASSIGN  in_bottom = 0.75 WHEN (NOT LOGICAL(in_bottom)).
+        
+        THIS-OBJECT:margin_left   = in_left.
+        THIS-OBJECT:margin_right  = in_Right.
+        THIS-OBJECT:margin_top    = in_top.    
+        THIS-OBJECT:margin_bottom = in_Bottom.
+
+    END METHOD.
+
+    METHOD PUBLIC VOID set_header(INPUT pch_Headers AS CHARACTER,
+                                  INPUT in_Margin   AS DECIMAL):
+
+        IF LENGTH(pch_Headers) GT 255 THEN
+        DO:
+            MESSAGE 
+                'Header string must be less than 255 characters'
+                VIEW-AS ALERT-BOX WARNING.
+            RETURN.
+        END.
+            
+
+        ASSIGN in_Margin = 0.3 WHEN (in_Margin EQ ?).
+
+        THIS-OBJECT:header                = pch_Headers.
+        THIS-OBJECT:margin_header         = in_Margin.
+        THIS-OBJECT:header_footer_changed = TRUE.
+    END METHOD.
+
+    METHOD PUBLIC VOID set_footer(INPUT pch_footer AS CHARACTER,
+                                  INPUT in_Margin  AS DECIMAL):
+
+        IF LENGTH(pch_footer) GT 255 THEN
+        DO:
+            MESSAGE 
+                'Footer string must be less than 255 characters'
+                VIEW-AS ALERT-BOX WARNING.
+            RETURN.
+        END.
+            
+        ASSIGN in_Margin = 0.3 WHEN (in_Margin EQ ?).
+
+        THIS-OBJECT:footer                = pch_footer.
+        THIS-OBJECT:margin_footer         = in_Margin.
+        THIS-OBJECT:header_footer_changed = TRUE.
+    END METHOD.
+    
+
+    METHOD PUBLIC VOID hide_gridlines(INPUT pin_Option AS INTEGER):
+        
+        CASE pin_Option:
+            WHEN 0 THEN
+            DO:
+                THIS-OBJECT:print_gridlines       = TRUE.
+                THIS-OBJECT:screen_gridlines      = TRUE.
+                THIS-OBJECT:print_options_changed = TRUE.
+            END.
+            WHEN 1 THEN
+            DO:
+                THIS-OBJECT:print_gridlines       = FALSE.
+                THIS-OBJECT:screen_gridlines      = TRUE.
+            END.
+            OTHERWISE
+            DO:
+                THIS-OBJECT:print_gridlines       = FALSE.
+                THIS-OBJECT:screen_gridlines      = FALSE.
+            END.
+        END CASE.
+
+    END METHOD.
+
+
+        
     
    /* Merge a range of cells. */
    METHOD PUBLIC VOID merge_range(INPUT in_first_row  AS INTEGER,
@@ -310,7 +462,7 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Worksheet INHERITS xmlwriter:
 
    END METHOD.
 
-
+    /** Write LOGICAL without format object **/
     METHOD PUBLIC VOID write (INPUT in_Row  AS INTEGER,
                               INPUT in_Col  AS INTEGER,
                               INPUT lgVALUE AS LOGICAL):
@@ -319,12 +471,34 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Worksheet INHERITS xmlwriter:
            (in_Col GT 16384) THEN
             RETURN.
 
-        THIS-OBJECT:_write(INPUT in_Row, 
-                           INPUT in_Col,
-                           INPUT STRING(lgVALUE,'1/0'), /* 1=TRUE, 0,FALSE*/
-                           INPUT 'LOGICAL').
+        DEFINE VARIABLE obj_Format AS CLASS FORMAT.
+        
+        obj_Format = THIS-OBJECT:Workbook:add_Format().
+
+        THIS-OBJECT:write(INPUT in_Row, 
+                          INPUT in_Col,
+                          INPUT lgVALUE, /* 1=TRUE, 0,FALSE*/
+                          INPUT obj_Format).
     END METHOD.
 
+    /** Write LOGICAL with format object **/
+    METHOD PUBLIC VOID write (INPUT in_Row     AS INTEGER,
+                              INPUT in_Col     AS INTEGER,
+                              INPUT lgVALUE    AS LOGICAL,
+                              INPUT obj_Format AS CLASS FORMAT):
+
+        IF (in_Row GT 1048576) OR
+           (in_Col GT 16384) THEN
+            RETURN.
+
+        THIS-OBJECT:_write(INPUT in_Row, 
+                          INPUT in_Col,
+                          INPUT STRING(lgVALUE,'1/0'), /* 1=TRUE, 0,FALSE*/
+                          INPUT 'LOGICAL',
+                          INPUT obj_Format).
+    END METHOD.
+
+    /** Write CHARACTER without format object **/
     METHOD PUBLIC VOID write (INPUT in_Row  AS INTEGER,
                               INPUT in_Col  AS INTEGER,
                               INPUT chVALUE AS CHARACTER):
@@ -333,25 +507,27 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Worksheet INHERITS xmlwriter:
             (in_Col GT 16384) THEN
             RETURN.
         
-        DEFINE VARIABLE ob_Format AS CLASS FORMAT.
+        DEFINE VARIABLE obj_Format AS CLASS FORMAT.
         
-        ob_Format = THIS-OBJECT:Workbook:add_Format().
+        obj_Format = THIS-OBJECT:Workbook:add_Format().
         
         THIS-OBJECT:write(INPUT in_Row,
                           INPUT in_Col,
                           INPUT chVALUE,
-                          INPUT ob_Format).
+                          INPUT obj_Format).
     END METHOD.
-
+    
+    /** Write CHARACTER without format object **/
     METHOD PUBLIC VOID write (INPUT in_Row      AS INTEGER,
                               INPUT in_Col      AS INTEGER,
                               INPUT chVALUE     AS CHARACTER,
-                              INPUT objForamat  AS CLASS FORMAT):
+                              INPUT obj_Format  AS CLASS FORMAT):
 
         IF (in_Row GT 1048576) OR
            (in_Col GT 16384) THEN
             RETURN.
         
+        /** Test the expression of the value to see if its a formula. **/
         IF chVALUE BEGINS '=' THEN
         DO:
 
@@ -360,18 +536,19 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Worksheet INHERITS xmlwriter:
             THIS-OBJECT:_write(INPUT in_Row, 
                                INPUT in_Col,
                                INPUT chVALUE,
-                               INPUT 'FORMULA',
-                               INPUT objForamat).
+                               INPUT 'FORMULA':U,
+                               INPUT obj_Format).
         END.
         ELSE
             THIS-OBJECT:_write(INPUT in_Row, 
                                INPUT in_Col,
                                INPUT chVALUE,
                                INPUT 'CHARACTER',
-                               INPUT objForamat).
+                               INPUT obj_Format).
 
     END METHOD.
-
+    
+    /** Write integer without format object **/
     METHOD PUBLIC VOID write (INPUT in_Row      AS INTEGER,
                               INPUT in_Col      AS INTEGER,
                               INPUT inVALUE     AS INTEGER):
@@ -381,20 +558,21 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Worksheet INHERITS xmlwriter:
            (in_Col GT 16384) THEN
             RETURN.
 
-        DEFINE VARIABLE ob_Format AS CLASS FORMAT.
+        DEFINE VARIABLE obj_Format AS CLASS FORMAT.
 
-        ob_Format = THIS-OBJECT:Workbook:add_Format().
+        obj_Format = THIS-OBJECT:Workbook:add_Format().
     
         THIS-OBJECT:write(INPUT in_Row, 
                           INPUT in_Col,
                           INPUT inVALUE,
-                          INPUT ob_Format).
+                          INPUT obj_Format).
     END METHOD.
 
+    /** Write integer with format object **/
     METHOD PUBLIC VOID write (INPUT in_Row      AS INTEGER,
                               INPUT in_Col      AS INTEGER,
                               INPUT inVALUE     AS INTEGER,
-                              INPUT objForamat  AS CLASS FORMAT):
+                              INPUT obj_Format  AS CLASS FORMAT):
 
         IF (in_Row GT 1048576) OR
            (in_Col GT 16384) THEN
@@ -404,9 +582,10 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Worksheet INHERITS xmlwriter:
                            INPUT in_Col,
                            INPUT STRING(inVALUE),
                            INPUT 'INTEGER',
-                           INPUT objForamat).
+                           INPUT obj_Format).
     END METHOD.
-    
+
+    /** Write decimal without format object **/
     METHOD PUBLIC VOID write (INPUT in_Row   AS INTEGER,
                               INPUT in_Col   AS INTEGER,
                               INPUT deVALUE  AS DECIMAL):
@@ -415,37 +594,71 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Worksheet INHERITS xmlwriter:
            (in_Col GT 16384) THEN
             RETURN.
 
-        THIS-OBJECT:_write(INPUT in_Row, 
-                           INPUT in_Col,
-                           INPUT STRING(deVALUE),
-                           INPUT 'DECIMAL').
+        DEFINE VARIABLE obj_Format AS CLASS FORMAT.
+        obj_Format = THIS-OBJECT:Workbook:add_Format().
+
+        THIS-OBJECT:_write (INPUT in_Row, 
+                            INPUT in_Col,
+                            INPUT STRING(deVALUE),
+                            INPUT 'DECIMAL',
+                            INPUT obj_Format).
 
     END METHOD.
 
+    /** Write decimal with format object **/
+    METHOD PUBLIC VOID write (INPUT in_Row     AS INTEGER,
+                              INPUT in_Col     AS INTEGER,
+                              INPUT deVALUE    AS DECIMAL,
+                              INPUT obj_Format AS CLASS FORMAT):
+
+        IF (in_Row GT 1048576) OR
+           (in_Col GT 16384) THEN
+            RETURN.
+
+        THIS-OBJECT:_write(INPUT in_Row, 
+                           INPUT in_Col,
+                           INPUT STRING(deVALUE),
+                           INPUT 'DECIMAL',
+                           INPUT obj_Format).
+
+    END METHOD.
+
+    /** Write DATE without format object **/
     METHOD PUBLIC VOID write (INPUT in_Row   AS INTEGER,
                               INPUT in_Col   AS INTEGER,
                               INPUT daVALUE  AS DATE):
 
-        DEFINE VARIABLE ININTERVAL AS INT64     NO-UNDO.
-        DEFINE VARIABLE daEpocDate AS DATE        NO-UNDO.
+        DEFINE VARIABLE in_Interval  AS INT64    NO-UNDO.
+        DEFINE VARIABLE obj_Format   AS CLASS FORMAT.
 
-        /** Default epoch date for Microsoft Office 2007 **/
-        daEpocDate = DATE(1,1,1900).
+        obj_Format = THIS-OBJECT:Workbook:add_Format().
 
-        /** + 2 Include the Epoc date and the date passed. **/
-        ININTERVAL = INTERVAL(daVALUE, daEpocDate,'days') + 2.
+        THIS-OBJECT:write(INPUT in_Row, 
+                           INPUT in_Col,
+                           INPUT in_Interval,
+                           INPUT obj_Format).
+    END METHOD.
 
-        DEFINE VARIABLE ob_Format AS CLASS FORMAT.
+
+    /** Write DATE with format object **/
+    METHOD PUBLIC VOID write (INPUT in_Row      AS INTEGER,
+                              INPUT in_Col      AS INTEGER,
+                              INPUT daVALUE     AS DATE,
+                              INPUT obj_Format   AS CLASS FORMAT):
+
+        DEFINE VARIABLE in_Interval AS INT64     NO-UNDO.
         
-        ob_Format = THIS-OBJECT:Workbook:add_Format().
+        /** + 2 Include the Epoc date and the date passed. **/
+        in_Interval = INTERVAL(daVALUE, {&da_EpocDate},'days') + 2.
 
         THIS-OBJECT:_write(INPUT in_Row, 
                            INPUT in_Col,
-                           INPUT STRING(ININTERVAL),
+                           INPUT STRING(in_Interval),
                            INPUT 'DATE',
-                           INPUT ob_Format).
+                           INPUT obj_Format).
     END METHOD.
-
+    
+    /** Write DATETIME without format object **/
     METHOD PUBLIC VOID write (INPUT in_Row   AS INTEGER,
                               INPUT in_Col   AS INTEGER,
                               INPUT dt_Value AS DATETIME):
@@ -453,44 +666,41 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Worksheet INHERITS xmlwriter:
         IF dt_Value EQ ? THEN
             RETURN.
 
-        DEFINE VARIABLE ob_Format AS CLASS FORMAT.
+        DEFINE VARIABLE obj_Format AS CLASS FORMAT.
 
-        ob_Format = THIS-OBJECT:Workbook:add_Format().
+        obj_Format = THIS-OBJECT:Workbook:add_Format().
 
         THIS-OBJECT:write(INPUT in_Row,
                           INPUT in_Col,
                           INPUT dt_Value,
-                          INPUT ob_Format).
+                          INPUT obj_Format).
     END METHOD.
 
+    /** Write DATETIME with format object **/
     METHOD PUBLIC VOID write (INPUT in_Row    AS INTEGER,
                               INPUT in_Col    AS INTEGER,
                               INPUT dt_Value  AS DATETIME,
-                              INPUT ob_Format AS CLASS FORMAT):
+                              INPUT obj_Format AS CLASS FORMAT):
 
         DEFINE VARIABLE in_Interval AS INT64     NO-UNDO.
-        DEFINE VARIABLE daEpocDate  AS DATE      NO-UNDO.
         DEFINE VARIABLE deTime_Dec  AS DECIMAL   NO-UNDO.
         DEFINE VARIABLE ch_DateTime AS CHARACTER NO-UNDO.
 
         IF dt_Value EQ ? THEN
             RETURN.
 
-        /** Default epoch date for Microsoft Office 2007 **/
-        daEpocDate = DATE(1,1,1900).
-
         /**NOTE: + 2 Include the Epoc date and the date passed. **/
-        in_Interval = INTERVAL(DATE(dt_Value), daEpocDate, 'days') + 2.
+        in_Interval = INTERVAL(DATE(dt_Value), {&da_EpocDate}, 'days') + 2.
 
 /*         deTime_Dec  = MTIME(dt_Value) / (60 * 60 * 24 * 1000). */
-        deTime_Dec  = MTIME(dt_Value) / 0x5265C00.
+        deTime_Dec  = MTIME(dt_Value) / {&ximillisecondsInDay}.
         ch_DateTime = STRING(in_Interval) + STRING(deTime_Dec).
 
         THIS-OBJECT:_write(INPUT in_Row, 
                            INPUT in_Col,
                            INPUT ch_DateTime,
                            INPUT 'DATETIME',
-                           INPUT ob_Format).
+                           INPUT obj_Format).
 
 
     END METHOD.
@@ -509,6 +719,24 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Worksheet INHERITS xmlwriter:
                            INPUT param_DateTime).
 
     END.
+
+    METHOD PUBLIC VOID write (INPUT in_Row      AS INTEGER,
+                              INPUT in_Col      AS INTEGER,
+                              INPUT tz_Value    AS DATETIME-TZ,
+                              INPUT obj_Format   AS CLASS FORMAT):
+
+        DEFINE VARIABLE param_DateTime AS DATETIME        NO-UNDO.
+    
+        param_DateTime = DATETIME( DATE(tz_Value), MTIME(tz_Value) ).
+    
+        /** Call the method above...**/
+        THIS-OBJECT:write (INPUT in_Row,
+                           INPUT in_Col,
+                           INPUT param_DateTime,
+                           INPUT obj_Format).
+    
+    END.
+
 
 
     METHOD PUBLIC VOID write_temp_table(INPUT in_row        AS INTEGER, 
@@ -689,7 +917,7 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Worksheet INHERITS xmlwriter:
 
    METHOD PRIVATE VOID _write_rows():
 
-        DEFINE VARIABLE ob_format        AS CLASS FORMAT.
+        DEFINE VARIABLE obj_Format        AS CLASS FORMAT.
         DEFINE VARIABLE obj_Format_Instant AS CLASS Format.
 
         THIS-OBJECT:_calculate_spans().
@@ -716,7 +944,7 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Worksheet INHERITS xmlwriter:
 
                     in_xf_Index = obj_Format_Instant:_get_xf_index().
 
-/*                     IF obj_Format_Instant:_get_xf_index() NE 0 THEN */
+                    IF obj_Format_Instant:_get_xf_index() NE 0 THEN 
                         hnSAXWriter:INSERT-ATTRIBUTE('s', STRING( in_xf_Index ) ).
                 END.
                     
@@ -1023,35 +1251,85 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Worksheet INHERITS xmlwriter:
    END METHOD.
 
    METHOD PRIVATE VOID _write_print_options():
+
+        IF NOT THIS-OBJECT:print_options_changed THEN
+            RETURN.
+
+        hnSAXWriter:WRITE-EMPTY-ELEMENT('printOptions'). 
+
+/*         # Set horizontal centering. */
+        IF THIS-OBJECT:hcenter THEN
+            hnSAXWriter:INSERT-ATTRIBUTE('horizontalCentered', '1').
+
+/*         # Set vertical centering. */
+        IF THIS-OBJECT:vcenter THEN
+            hnSAXWriter:INSERT-ATTRIBUTE('verticalCentered', '1').
+
+/*         # Enable row and column headers. */
+        IF THIS-OBJECT:print_headers THEN
+            hnSAXWriter:INSERT-ATTRIBUTE('headings',' 1').
+
+/*         # Set printed gridlines. */
+        IF THIS-OBJECT:print_gridlines THEN
+            hnSAXWriter:INSERT-ATTRIBUTE('gridLines', '1').
+        
    END METHOD.
 
    METHOD PRIVATE VOID _write_page_margins():
 
         hnSAXWriter:WRITE-EMPTY-ELEMENT('pageMargins').   
-        hnSAXWriter:INSERT-ATTRIBUTE('left','0.7').   
-        hnSAXWriter:INSERT-ATTRIBUTE('right','0.7').   
-        hnSAXWriter:INSERT-ATTRIBUTE('top','0.75').  
-        hnSAXWriter:INSERT-ATTRIBUTE('bottom','0.75').   
-        hnSAXWriter:INSERT-ATTRIBUTE('header','0.3').   
-        hnSAXWriter:INSERT-ATTRIBUTE('footer','0.3').   
+        hnSAXWriter:INSERT-ATTRIBUTE('left',    TRIM(STRING(THIS-OBJECT:margin_left, '>>9.99'))).   
+        hnSAXWriter:INSERT-ATTRIBUTE('right',   TRIM(STRING(THIS-OBJECT:margin_right, '>>9.99'))).   
+        hnSAXWriter:INSERT-ATTRIBUTE('top',     TRIM(STRING(THIS-OBJECT:margin_top, '>>9.99'))).  
+        hnSAXWriter:INSERT-ATTRIBUTE('bottom',  TRIM(STRING(THIS-OBJECT:margin_bottom, '>>9.99'))).   
+
+        hnSAXWriter:INSERT-ATTRIBUTE('header',  TRIM(STRING(THIS-OBJECT:margin_header, '>>9.99'))).   
+        hnSAXWriter:INSERT-ATTRIBUTE('footer',  TRIM(STRING(THIS-OBJECT:margin_footer, '>>9.99'))).   
 
    END METHOD.
 
-   METHOD PRIVATE VOID _write_page_setup():
+    METHOD PRIVATE VOID _write_page_setup():
+
+        IF NOT THIS-OBJECT:page_setup_changed THEN
+            RETURN.
+
         hnSAXWriter:WRITE-EMPTY-ELEMENT('pageSetup').   
 
-        IF LOGICAL(THIS-OBJECT:paperSize)  THEN
-            hnSAXWriter:INSERT-ATTRIBUTE('paperSize', STRING(THIS-OBJECT:paperSize) ).   
+        IF LOGICAL(THIS-OBJECT:paper_size)  THEN
+            hnSAXWriter:INSERT-ATTRIBUTE('paper_size', STRING(THIS-OBJECT:paper_size) ).   
 
         IF THIS-OBJECT:print_scale NE 100 THEN /** 100% **/
-            hnSAXWriter:INSERT-ATTRIBUTE('scale', STRING(THIS-OBJECT:print_scale ) ).   
-
+            hnSAXWriter:INSERT-ATTRIBUTE('scale', STRING( THIS-OBJECT:print_scale ) ).   
+        
         hnSAXWriter:INSERT-ATTRIBUTE('orientation', THIS-OBJECT:orientation ).   
         
    END METHOD.
 
    METHOD PRIVATE VOID _write_header_footer():
+
+        IF NOT THIS-OBJECT:header_footer_changed THEN
+            RETURN.
+
+        hnSAXWriter:START-ELEMENT('headerFooter'). 
+
+        IF THIS-OBJECT:header NE '' THEN
+            THIS-OBJECT:_write_odd_header().
+
+        IF THIS-OBJECT:footer NE '' THEN
+            THIS-OBJECT:_write_odd_footer().
+
+        hnSAXWriter:END-ELEMENT('headerFooter'). 
+
    END METHOD.
+
+    METHOD PRIVATE VOID _write_odd_header():
+        hnSAXWriter:WRITE-DATA-ELEMENT('oddHeader', THIS-OBJECT:header ).   
+    END METHOD.
+
+    METHOD PRIVATE VOID _write_odd_footer():
+        hnSAXWriter:WRITE-DATA-ELEMENT('oddFooter', THIS-OBJECT:footer ).   
+    END METHOD.
+
 
    METHOD PRIVATE VOID _write_row_breaks():
    END METHOD.
