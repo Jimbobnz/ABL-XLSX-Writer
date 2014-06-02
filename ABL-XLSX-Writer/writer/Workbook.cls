@@ -94,6 +94,13 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Workbook INHERITS xmlwriter:
         INDEX idxFontIndex IS PRIMARY UNIQUE
             font_index.
 
+    DEFINE TEMP-TABLE ttDefineNames NO-UNDO XML-NODE-NAME 'definedNames'
+        FIELD name          AS CHARACTER    XML-NODE-TYPE 'ATTRIBUTE'   XML-NODE-NAME 'name'
+        FIELD sheet_id      AS INTEGER      XML-NODE-TYPE 'ATTRIBUTE'   XML-NODE-NAME 'localSheetId' 
+        FIELD sheet_range   AS CHARACTER    XML-NODE-TYPE 'ELEMENT'     XML-NODE-NAME 'definedName'
+        FIELD hidden        AS LOGICAL      XML-NODE-TYPE 'ATTRIBUTE'   XML-NODE-NAME 'hidden'  
+        INDEX idxName   IS PRIMARY
+            name.
     
     CONSTRUCTOR Workbook(INPUT pchExcel AS CHARACTER):
         
@@ -117,8 +124,8 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Workbook INHERITS xmlwriter:
 
         THIS-OBJECT:xf_formats         = TEMP-TABLE ttxf_Formats:HANDLE.
         
-/*         /** Load the defaults Formats etc. **/ */
-/*         THIS-OBJECT:add_Format().              */
+        /** Load the defaults Formats etc. **/
+        THIS-OBJECT:add_Format(INPUT 0).
         
     END CONSTRUCTOR.
 
@@ -220,24 +227,28 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Workbook INHERITS xmlwriter:
 
     END METHOD.
 
-    METHOD PUBLIC CLASS Format add_Format():
-
+    METHOD PUBLIC CLASS Format add_Format(INPUT in_format_index AS INTEGER):
+        
         DEFINE VARIABLE ob_Format AS CLASS Format no-undo.
-
         
         ob_Format = NEW Format(INPUT THIS-OBJECT:xf_Format_indices,
                                INPUT THIS-OBJECT:dxf_Format_indices).
 
-        THIS-OBJECT:format_count = THIS-OBJECT:format_count + 1.
-
         CREATE ttxf_Formats.
 
         ASSIGN
-             ttxf_Formats.format_index = THIS-OBJECT:format_count
+             ttxf_Formats.format_index = in_format_index
              ttxf_Formats.OBJFormat    = ob_Format.
 
+        THIS-OBJECT:format_count = THIS-OBJECT:format_count + 1.
+
         RETURN ob_Format.
-    END.
+    END METHOD.
+
+    METHOD PUBLIC CLASS Format add_Format():
+
+        RETURN THIS-OBJECT:add_Format(INPUT THIS-OBJECT:format_count + 1).
+    END METHOD.
 
     METHOD PRIVATE VOID _prepare_format_properties():
 
@@ -578,6 +589,38 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Workbook INHERITS xmlwriter:
     END METHOD.
 
     METHOD PRIVATE VOID _write_defined_names():
+        
+/*     DEFINE TEMP-TABLE ttDefineNames NO-UNDO XML-NODE-NAME 'definedNames'                             */
+/*         FIELD name          AS CHARACTER    XML-NODE-TYPE 'ATTRIBUTE'   XML-NODE-NAME 'name'         */
+/*         FIELD sheet_id      AS INTEGER      XML-NODE-TYPE 'ATTRIBUTE'   XML-NODE-NAME 'localSheetId' */
+/*         FIELD sheet_range   AS CHARACTER    XML-NODE-TYPE 'ELEMENT'     XML-NODE-NAME 'definedName'  */
+/*         FIELD hidden        AS LOGICAL      XML-NODE-TYPE 'ATTRIBUTE'   XML-NODE-NAME 'hidden'       */
+/*         INDEX idxName   IS PRIMARY                                                                   */
+/*             name.                                                                                    */
+
+        IF NOT TEMP-TABLE ttDefineNames:HAS-RECORDS THEN
+            RETURN.
+
+        hnSAXWriter:START-ELEMENT('definedNames').
+
+        FOR EACH ttDefineNames:
+            THIS-OBJECT:_write_defined_name(BUFFER ttDefineNames).
+        END.
+
+        hnSAXWriter:END-ELEMENT('definedNames').
+
+    END METHOD.
+
+    METHOD PRIVATE VOID _write_defined_name(BUFFER ttDefineNames FOR ttDefineNames):
+         hnSAXWriter:WRITE-DATA-ELEMENT('definedName', ttDefineNames.sheet_range ).
+         hnSAXWriter:INSERT-ATTRIBUTE('name', ttDefineNames.name).
+
+         IF LOGICAL(ttDefineNames.sheet_id) THEN
+            hnSAXWriter:INSERT-ATTRIBUTE('localSheetId', STRING(ttDefineNames.sheet_id)).
+
+         IF ttDefineNames.hidden THEN 
+            hnSAXWriter:INSERT-ATTRIBUTE('hidden', '1').
+
     END METHOD.
 
     METHOD PRIVATE VOID _prepare_sst_string_data():
