@@ -35,7 +35,7 @@ objWorksheet:write(3,2, 3).
 objWorksheet:write(4,2, 4).      
 
 objWorksheet:write(5,1, 'Total:', obj_Format).          
-objWorksheet:write(5,2, '=SUM(B1:B4)', objWorkbook:add_format('bold:true|font_size:10|font_colour:green|num_format:"0"|bg_colour:yellow|pattern:2')).          
+objWorksheet:write(5,2, '=SUM(B1:B4)', objWorkbook:add_format('font_colour:blue|bg_colour:orange|pattern:9')).          
 
 objWorksheet:write(6,1, 'Average:', obj_Format).          
 objWorksheet:write(6,2, '=AVERAGE(B1:B4)', obj_Format). 
