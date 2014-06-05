@@ -359,8 +359,6 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Workbook INHERITS xmlwriter:
                 WHEN 'fg_colour' THEN
                     ob_Format:set_fg_colour(INPUT ch_PropertyValue).
 
-                    
-
             END CASE.
 
         END.
@@ -593,11 +591,7 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Workbook INHERITS xmlwriter:
 
             chFillKey = ob_Format:_get_fill_key().
 
-            display chFillKey.
-
-            PAUSE 0.
-
-             /** If the format object font as already been defined 
+            /** If the format object font as already been defined 
                  by another format class object, use that. **/
 
              IF obAvaialbleFills:HAS(chFillKey) THEN
