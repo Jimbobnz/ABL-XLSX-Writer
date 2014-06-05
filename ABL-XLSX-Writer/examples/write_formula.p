@@ -17,18 +17,16 @@ objWorkbook:set_properties('company', 'CMI').
 objWorkbook:set_properties('keywords', 'First Excel').
 objWorkbook:set_properties('comments', 'This is my very first Excel SpreadSheet').
 objWorkbook:set_properties('category', 'Development').
-objWorkbook:set_properties('status', 'Everything is Awsome').
+objWorkbook:set_properties('status', 'Everything is Awsome').                                           
 
 objWorksheet = objWorkbook:add_worksheet('Formulas').
 
 /** Set the the third column to be x width wide **/
 
-obj_Format = objWorkbook:add_format().
-obj_Format:set_bold().
+obj_Format = objWorkbook:add_format('bold:true|font_colour:Grey|num_format:"0"|align:right').
 
 objWorksheet:set_column(1,1,10).
 objWorksheet:set_column(2,2,25).
-
 
 
 objWorksheet:write(1,2, 1).      
@@ -37,7 +35,7 @@ objWorksheet:write(3,2, 3).
 objWorksheet:write(4,2, 4).      
 
 objWorksheet:write(5,1, 'Total:', obj_Format).          
-objWorksheet:write(5,2, '=SUM(B1:B4)', obj_Format).          
+objWorksheet:write(5,2, '=SUM(B1:B4)', objWorkbook:add_format('bold:true|font_size:10|font_colour:green|num_format:"0"|bg_colour:yellow|pattern:2')).          
 
 objWorksheet:write(6,1, 'Average:', obj_Format).          
 objWorksheet:write(6,2, '=AVERAGE(B1:B4)', obj_Format). 
