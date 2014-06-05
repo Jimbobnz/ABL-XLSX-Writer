@@ -305,7 +305,8 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Packager:
         /** Return the temp-table handle for the xf_formats objects.**/
         objStyles:_set_xf_formats( INPUT THIS-OBJECT:Workbook:xf_formats(),
                                    INPUT THIS-OBJECT:Workbook:fonts(),
-                                   INPUT THIS-OBJECT:Workbook:Num_Format()
+                                   INPUT THIS-OBJECT:Workbook:Num_Format(),
+                                   INPUT THIS-OBJECT:Workbook:Fills()
                                    ).
 
 

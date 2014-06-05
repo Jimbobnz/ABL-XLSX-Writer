@@ -25,7 +25,7 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Format INHERITS xmlwriter:
     DEFINE PUBLIC PROPERTY font_charset        AS INTEGER              NO-UNDO GET. PRIVATE SET.
     DEFINE PUBLIC PROPERTY font_family         AS INTEGER              NO-UNDO GET. PRIVATE SET.
     DEFINE PUBLIC PROPERTY font_outline        AS LOGICAL              NO-UNDO GET. PRIVATE SET.
-    DEFINE PUBLIC PROPERTY font_script         AS LOGICAL              NO-UNDO GET. PRIVATE SET.
+    DEFINE PUBLIC PROPERTY font_script         AS INTEGER              NO-UNDO GET. PRIVATE SET.
     DEFINE PUBLIC PROPERTY font_shadow         AS LOGICAL              NO-UNDO GET. PRIVATE SET.
     DEFINE PUBLIC PROPERTY font_strike         AS LOGICAL              NO-UNDO GET. PRIVATE SET.
     DEFINE PUBLIC PROPERTY font_name           AS CHARACTER            NO-UNDO GET. PRIVATE SET.
@@ -37,23 +37,28 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Format INHERITS xmlwriter:
 
     DEFINE PUBLIC PROPERTY locked              AS LOGICAL              NO-UNDO GET. PRIVATE SET.
     DEFINE PUBLIC PROPERTY hidden              AS LOGICAL              NO-UNDO GET. PRIVATE SET.  
+    DEFINE PUBLIC PROPERTY shrink              AS LOGICAL              NO-UNDO GET. PRIVATE SET.  
     
     DEFINE PUBLIC PROPERTY just_distrib        AS LOGICAL              NO-UNDO GET. PRIVATE SET. 
     DEFINE PUBLIC PROPERTY text_wrap           AS LOGICAL              NO-UNDO GET. PRIVATE SET. 
-    DEFINE PUBLIC PROPERTY shrink              AS LOGICAL              NO-UNDO GET. PRIVATE SET. 
+    
     DEFINE PUBLIC PROPERTY center_across       AS LOGICAL              NO-UNDO GET. PRIVATE SET.
     DEFINE PUBLIC PROPERTY text_v_align        AS INTEGER              NO-UNDO GET. PRIVATE SET.
     DEFINE PUBLIC PROPERTY text_h_align        AS INTEGER              NO-UNDO GET. PRIVATE SET.
     DEFINE PUBLIC PROPERTY indent              AS INTEGER              NO-UNDO GET. PRIVATE SET.  
     DEFINE PUBLIC PROPERTY rotation            AS INTEGER              NO-UNDO GET. PRIVATE SET.
     DEFINE PUBLIC PROPERTY reading_order       AS INTEGER              NO-UNDO GET. PRIVATE SET.
-     
+    
+    DEFINE PUBLIC PROPERTY pattern             AS INTEGER              NO-UNDO GET. SET.   
+    DEFINE PUBLIC PROPERTY bg_colour           AS CHARACTER            NO-UNDO GET. SET.
+    DEFINE PUBLIC PROPERTY fg_colour           AS CHARACTER            NO-UNDO GET. SET.
 
     DEFINE PUBLIC PROPERTY num_format_index    AS INTEGER              NO-UNDO GET. SET.  
     DEFINE PUBLIC PROPERTY border_index        AS INTEGER              NO-UNDO GET. SET.  
     
     DEFINE PUBLIC PROPERTY fill_index          AS INTEGER              NO-UNDO GET. SET.  
-    
+    DEFINE PUBLIC PROPERTY has_fill            AS LOGICAL              NO-UNDO GET. SET.
+
     DEFINE PUBLIC PROPERTY xf_index             AS INTEGER INITIAL 0   NO-UNDO GET. SET.  
 
     DEFINE PRIVATE PROPERTY named_colours       AS CLASS JsonObject     NO-UNDO GET. SET.
@@ -83,7 +88,7 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Format INHERITS xmlwriter:
         THIS-OBJECT:font_outline    = FALSE.        
         THIS-OBJECT:font_shadow     = FALSE.
         THIS-OBJECT:font_strike     = FALSE.
-        THIS-OBJECT:font_script     = FALSE.
+        THIS-OBJECT:font_script     = 0.           /** Values 0,1 & 2**/ 
 
         THIS-OBJECT:text_h_align    = 0.    /** left **/
         THIS-OBJECT:text_v_align    = 0.    /** vertical center**/
@@ -91,6 +96,7 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Format INHERITS xmlwriter:
         THIS-OBJECT:indent          = 0.
         THIS-OBJECT:rotation        = 0.
         THIS-OBJECT:reading_order   = 0.
+        THIS-OBJECT:pattern         = 1.    /** 1 = None **/
 
         THIS-OBJECT:num_format_index = 0.
         THIS-OBJECT:num_format      = '0'.  /** See Excel for a list of number formats **/
@@ -114,6 +120,20 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Format INHERITS xmlwriter:
         named_colours:add('yellow','#FFFF00').
 
     END CONSTRUCTOR.
+
+    METHOD PRIVATE CHARACTER _get_colour(INPUT pch_Colour AS CHARACTER):
+
+        IF THIS-OBJECT:named_colours:Has(pch_Colour) THEN
+            RETURN THIS-OBJECT:named_colours:GetCharacter(INPUT pch_Colour).
+        ELSE
+        DO:
+            IF pch_Colour MATCHES '#......' THEN
+                RETURN pch_Colour.
+            ELSE
+                RETURN ''.
+        END.
+            
+    END METHOD.
 
     METHOD PUBLIC INTEGER _get_xf_index():
 
@@ -200,7 +220,7 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Format INHERITS xmlwriter:
 
     METHOD PUBLIC CHARACTER _get_format_key():
         /* Returns a unique hash key for a font. Used by Workbook.*/
-         DEFINE VARIABLE chKey AS CHARACTER   NO-UNDO.
+        DEFINE VARIABLE chKey AS CHARACTER   NO-UNDO.
 
         chKey = THIS-OBJECT:_join(":",   THIS-OBJECT:_get_font_key() ).
         chKey = THIS-OBJECT:_join(chKey, THIS-OBJECT:_get_border_key()).
@@ -214,12 +234,19 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Format INHERITS xmlwriter:
 
     END METHOD.
 
-    METHOD PUBLIC CHARACTER _get_border_key():
+    METHOD PRIVATE CHARACTER _get_border_key():
         RETURN ''.
     END METHOD.
 
     METHOD PUBLIC CHARACTER _get_fill_key():
-        RETURN ''.
+
+        DEFINE VARIABLE chKey AS CHARACTER   NO-UNDO.
+
+        chKey = THIS-OBJECT:_join(":", THIS-OBJECT:pattern ).
+        chKey = THIS-OBJECT:_join(chKey, THIS-OBJECT:bg_colour ).
+        chKey = THIS-OBJECT:_join(chKey, THIS-OBJECT:fg_colour ).
+
+        RETURN chKey.
     END METHOD.
 
     METHOD PUBLIC CHARACTER _get_alignment_key():
@@ -329,7 +356,7 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Format INHERITS xmlwriter:
         END.
     END METHOD.
 
-    METHOD PUBLIC VOID set_font_size(INPUT pin_font_size AS INTEGER):
+    METHOD PUBLIC VOID set_font_size(INPUT pin_font_size AS DECIMAL):
         IF pin_font_size NE ? OR pin_font_size NE 0 THEN
         DO:
             THIS-OBJECT:font_size   = pin_font_size.
@@ -345,7 +372,7 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Format INHERITS xmlwriter:
     METHOD PUBLIC VOID set_font_colour(INPUT pch_font_colour AS CHARACTER):
         
         IF THIS-OBJECT:named_colours:HAS(pch_font_colour) THEN
-            pch_font_colour = named_colours:GETCHARACTER( pch_font_colour ).
+            pch_font_colour = named_colours:GetCharacter( pch_font_colour ).
         
         IF pch_font_colour BEGINS '#' THEN               
             THIS-OBJECT:font_colour = pch_font_colour.
@@ -361,7 +388,11 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Format INHERITS xmlwriter:
     END METHOD.
 
     METHOD PUBLIC VOID set_italic():
-        THIS-OBJECT:italic = TRUE.
+        THIS-OBJECT:set_italic(INPUT TRUE).
+    END METHOD.
+
+    METHOD PUBLIC VOID set_italic(INPUT lg_italic AS LOGICAL):
+        THIS-OBJECT:italic = lg_italic.
     END METHOD.
 
     METHOD PUBLIC VOID set_underline():
@@ -373,17 +404,44 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Format INHERITS xmlwriter:
     END METHOD.
 
     METHOD PUBLIC VOID set_font_strikeout():
-        THIS-OBJECT:font_strike = TRUE.
+        THIS-OBJECT:set_font_strikeout(INPUT TRUE).
+    END METHOD.
+
+    METHOD PUBLIC VOID set_font_strikeout(INPUT lg_font_strike AS LOGICAL):
+        THIS-OBJECT:font_strike = lg_font_strike.
     END METHOD.
 
     METHOD PUBLIC VOID set_font_script():
-        THIS-OBJECT:font_script = TRUE.
+        THIS-OBJECT:set_font_script(INPUT 1). /* Default is 1, superscript. */
+    END METHOD.
+
+    METHOD PUBLIC VOID set_font_script(INPUT in_font_script AS INTEGER):
+
+        IF in_font_script GE 1 AND in_font_script LE 2 THEN
+            THIS-OBJECT:font_script = in_font_script.
     END METHOD.
 
     METHOD PUBLIC VOID set_num_format(INPUT pch_format_code AS CHARACTER):
         THIS-OBJECT:num_format = pch_format_code.
     END METHOD.
     
+    METHOD PUBLIC VOID set_locked():
+        THIS-OBJECT:set_locked(INPUT TRUE).
+    END METHOD.
+
+    METHOD PUBLIC VOID set_locked(INPUT lg_locked AS LOGICAL):
+        THIS-OBJECT:locked = lg_locked.
+    END METHOD.
+
+    METHOD PUBLIC VOID set_hidden():
+        THIS-OBJECT:set_hidden(INPUT TRUE).
+    END METHOD.
+
+    METHOD PUBLIC VOID set_hidden(INPUT lg_hidden AS LOGICAL):
+        THIS-OBJECT:locked = lg_hidden.
+    END METHOD.    
+
+
     METHOD PUBLIC VOID set_align(INPUT pch_alignment AS CHARACTER):
         
     /** Horizontal alignment **/
@@ -444,7 +502,11 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Format INHERITS xmlwriter:
     END METHOD.
 
     METHOD PUBLIC VOID set_text_wrap():
+        THIS-OBJECT:set_text_wrap(TRUE).
+    END METHOD.
 
+    METHOD PUBLIC VOID set_text_wrap(INPUT lg_text_wrap AS LOGICAL):
+        THIS-OBJECT:text_wrap = lg_text_wrap.
     END METHOD.
    
     METHOD PUBLIC VOID set_rotation(INPUT pin_angle AS INTEGER):
@@ -455,12 +517,34 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Format INHERITS xmlwriter:
         THIS-OBJECT:indent = pin_level.
     END METHOD.
    
-    METHOD PUBLIC VOID set_shrink(INPUT pin_level AS INTEGER):
+    METHOD PUBLIC VOID set_shrink():
+        THIS-OBJECT:set_shrink(TRUE).
+    END METHOD.
+
+    METHOD PUBLIC VOID set_shrink(INPUT lg_shrink AS LOGICAL):
+        THIS-OBJECT:shrink = lg_shrink.
+    END METHOD.
+
+    METHOD PUBLIC VOID set_pattern(INPUT pin_pattern AS INTEGER):
+
+        IF pin_pattern GT 0 AND pin_pattern LE 18 THEN
+            THIS-OBJECT:pattern = pin_pattern.
+        ELSE 
+            THIS-OBJECT:pattern = 0.
 
     END METHOD.
 
     METHOD PUBLIC VOID set_bg_colour(INPUT pch_colour AS CHARACTER):
+        THIS-OBJECT:bg_colour = THIS-OBJECT:_get_colour(INPUT pch_colour).
+
+        MESSAGE THIS-OBJECT:bg_colour
+            VIEW-AS ALERT-BOX INFO.
 
     END METHOD.
+
+    METHOD PUBLIC VOID set_fg_colour(INPUT pch_colour AS CHARACTER):
+        THIS-OBJECT:fg_colour = THIS-OBJECT:_get_colour(INPUT pch_colour).
+    END METHOD.
+
 END CLASS.
 

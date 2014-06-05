@@ -19,8 +19,10 @@ USING Progress.Json.ObjectModel.*.
 CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Styles INHERITS xmlwriter:
         
     DEFINE VARIABLE JSO_Style_Properties        AS CLASS JsonObject     NO-UNDO.
+
     DEFINE VARIABLE heading_pairs       AS CLASS JsonArray      NO-UNDO.
     DEFINE VARIABLE part_name           AS CLASS JsonArray      NO-UNDO.
+    DEFINE VARIABLE JSO_patterns        AS CLASS JsonArray      NO-UNDO.
     DEFINE VARIABLE JSO_Format_Codes    AS CLASS JsonObject     NO-UNDO.
 
     DEFINE PRIVATE PROPERTY number_format_count     AS INTEGER              GET. SET.
@@ -30,6 +32,7 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Styles INHERITS xmlwriter:
     DEFINE PRIVATE PROPERTY xf_formats              AS HANDLE               GET. SET.   /** Handle to a temp-table of format Objects.**/  
     DEFINE PRIVATE PROPERTY fonts                   AS HANDLE               GET. SET.   /** Handle to fonts temp-table.**/  
     DEFINE PRIVATE PROPERTY Num_Format              AS HANDLE               GET. SET. 
+    DEFINE PRIVATE PROPERTY Fills                   AS HANDLE               GET. SET.   /** Handle to Fills temp-table.**/  
     
     DEFINE TEMP-TABLE ttcellXfs NO-UNDO XML-NODE-NAME 'cellXfs'
         FIELD number_format_index AS INTEGER    XML-NODE-TYPE 'ATTRIBUTE' XML-NODE-NAME 'numFmtId' 
@@ -103,6 +106,28 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Styles INHERITS xmlwriter:
         JSO_Format_Codes:ADD('34','##0.0E+0').
         JSO_Format_Codes:ADD('35','@').
 
+        JSO_patterns = NEW JSONARRAY().
+
+        JSO_patterns:ADD('none').
+        JSO_patterns:ADD('solid').
+        JSO_patterns:ADD('mediumGray').
+        JSO_patterns:ADD('darkGray').
+        JSO_patterns:ADD('lightGray').
+        JSO_patterns:ADD('darkHorizontal').
+        JSO_patterns:ADD('darkVertical').
+        JSO_patterns:ADD('darkDown').
+        JSO_patterns:ADD('darkUp').
+        JSO_patterns:ADD('darkGrid').
+        JSO_patterns:ADD('darkTrellis').
+        JSO_patterns:ADD('lightHorizontal').
+        JSO_patterns:ADD('lightVertical').
+        JSO_patterns:ADD('lightDown').
+        JSO_patterns:ADD('lightUp').
+        JSO_patterns:ADD('lightGrid').
+        JSO_patterns:ADD('lightTrellis').
+        JSO_patterns:ADD('gray125').
+        JSO_patterns:ADD('gray0625').
+
     END CONSTRUCTOR.
 
     DESTRUCTOR Styles():
@@ -113,7 +138,8 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Styles INHERITS xmlwriter:
 
     METHOD PUBLIC VOID _set_xf_formats(INPUT hnxf_formats AS HANDLE,
                                        INPUT hnfonts      AS HANDLE,
-                                       INPUT hnNumFormat  AS HANDLE):
+                                       INPUT hnNumFormat  AS HANDLE,
+                                       INPUT hnFills      AS HANDLE):
 
         /** hnxf_formats is the handle to a temp-table. The Temp-table 
             contains a list of all the Format Class Objects.**/
@@ -131,6 +157,10 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Styles INHERITS xmlwriter:
         IF VALID-HANDLE(hnNumFormat) AND hnNumFormat:TYPE EQ 'TEMP-TABLE' THEN
             THIS-OBJECT:Num_Format = hnNumFormat. 
         
+        IF VALID-HANDLE(hnFills) AND hnFills:TYPE EQ 'TEMP-TABLE' THEN
+            THIS-OBJECT:Fills = hnFills. 
+
+
 
     END METHOD.
 
@@ -339,8 +369,9 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Styles INHERITS xmlwriter:
             DEFINE VARIABLE chTempColour AS CHARACTER   NO-UNDO.
             IF hnFontBuffer::colour BEGINS '#' THEN
             DO:
-                chTempColour = REPLACE(hnFontBuffer::colour,'#','').
-                hnSAXWriter:INSERT-ATTRIBUTE('rgb', 'FF' + chTempColour).
+                chTempColour = REPLACE(hnFontBuffer::colour,'#','FF').
+                chTempColour = CAPS(chTempColour).
+                hnSAXWriter:INSERT-ATTRIBUTE('rgb', chTempColour).
             END.
         END.
 
@@ -377,23 +408,60 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Styles INHERITS xmlwriter:
     
     METHOD VOID _write_fills():
 
-        hnSAXWriter:START-ELEMENT('fills').
-        hnSAXWriter:INSERT-ATTRIBUTE('count', STRING(THIS-OBJECT:fill_count) ).
-        
-        /** Write the default fill element **/
-        THIS-OBJECT:_write_default_fill(INPUT 'none').
-        THIS-OBJECT:_write_default_fill(INPUT 'gray125').
+        DEFINE VARIABLE hnFills       AS HANDLE      NO-UNDO.
+        DEFINE VARIABLE hnFill       AS HANDLE      NO-UNDO.
+        DEFINE VARIABLE hnQuery          AS HANDLE      NO-UNDO.
+        DEFINE VARIABLE obFormatInstance AS CLASS FORMAT.
 
-        FOR EACH ttxf_format
-            WHERE ttxf_format.has_fill:
-            THIS-OBJECT:_write_fill().
+        hnFills = THIS-OBJECT:Fills.
+
+        IF NOT VALID-HANDLE(hnFills ) OR
+           NOT hnFills :TYPE EQ 'TEMP-TABLE' THEN
+            RETURN.
+
+        IF NOT hnFills:HAS-RECORDS THEN
+        DO:
+            hnSAXWriter:START-ELEMENT('fills').
+            hnSAXWriter:INSERT-ATTRIBUTE('count', '2' ).
+
+            /** Write the default fill element **/
+            THIS-OBJECT:_write_default_fill(INPUT 'none').
+            THIS-OBJECT:_write_default_fill(INPUT 'gray125').
+
+            hnSAXWriter:END-ELEMENT('fills').
+            RETURN.
         END.
+
+        hnFill = hnFills:DEFAULT-BUFFER-HANDLE.
+
+        CREATE QUERY hnQuery.
+        hnQuery:ADD-BUFFER(hnFill).
+        hnQuery:QUERY-PREPARE('PRESELECT EACH ttFills BY ttFills.fill_index').
+        hnQuery:QUERY-OPEN().
+
+        hnSAXWriter:START-ELEMENT('fills').
+        hnSAXWriter:INSERT-ATTRIBUTE('count', STRING( hnQuery:NUM-RESULTS ) ).
+        
+        IF hnQuery:IS-OPEN THEN
+        DO:
+            
+            hnQuery:GET-FIRST() NO-ERROR.
+
+            REPEAT WHILE NOT hnQuery:QUERY-OFF-END:
+                THIS-OBJECT:_write_fill(INPUT hnFill). /** Pass the buffer handle**/
+                hnQuery:GET-NEXT() NO-ERROR.
+            END.
+
+            hnQuery:QUERY-CLOSE().
+        END.
+        
+        DELETE OBJECT hnQuery.
 
         hnSAXWriter:END-ELEMENT('fills').
 
     END METHOD.
 
-    METHOD PRIVATE VOID _write_default_fill(INPUT  pattern_type AS CHARACTER):
+    METHOD PRIVATE VOID _write_default_fill(INPUT pattern_type AS CHARACTER):
 
         hnSAXWriter:START-ELEMENT('fill').
         hnSAXWriter:WRITE-EMPTY-ELEMENT('patternFill').
@@ -402,9 +470,43 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Styles INHERITS xmlwriter:
 
     END METHOD.
 
-    METHOD PRIVATE VOID _write_fill().
+    METHOD PRIVATE VOID _write_fill(INPUT hnFill AS HANDLE):
 
+        DEFINE VARIABLE inPattern   AS INTEGER      NO-UNDO.
+        DEFINE VARIABLE chbg_colour AS CHARACTER    NO-UNDO.
+        DEFINE VARIABLE chfg_colour AS CHARACTER    NO-UNDO.
 
+        ASSIGN
+            inPattern    = hnFill::pattern
+            chbg_colour  = hnFill::bg_colour   
+            chfg_colour  = hnFill::fg_colour.
+
+        hnSAXWriter:START-ELEMENT('fill').
+        hnSAXWriter:START-ELEMENT('patternFill').
+        
+        IF inPattern GT 0 THEN
+            hnSAXWriter:INSERT-ATTRIBUTE('patternType', JSO_patterns:GetCharacter( inPattern ) ).
+
+        IF chfg_colour NE '' THEN
+        DO:
+            chfg_colour = REPLACE(chfg_colour,'#','FF').
+            chfg_colour = CAPS(chfg_colour).
+
+            MESSAGE chfg_colour                             
+            hnSAXWriter:WRITE-EMPTY-ELEMENT('fgColor').
+            hnSAXWriter:INSERT-ATTRIBUTE('rgb', chfg_colour ).
+        END.
+
+        IF chbg_colour NE '' THEN
+        DO:
+            chbg_colour = REPLACE(chbg_colour,'#','FF').
+            chbg_colour = CAPS(chbg_colour).
+            hnSAXWriter:WRITE-EMPTY-ELEMENT('bgColor').
+            hnSAXWriter:INSERT-ATTRIBUTE('rgb', chbg_colour ).
+        END.
+
+        hnSAXWriter:END-ELEMENT('patternFill').
+        hnSAXWriter:END-ELEMENT('fill').
     END METHOD.
     
     METHOD VOID _write_borders():
@@ -587,7 +689,6 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Styles INHERITS xmlwriter:
     END METHOD.
 
 END CLASS.
-
 
 
 

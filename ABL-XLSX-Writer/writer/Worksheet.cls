@@ -96,7 +96,6 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Worksheet INHERITS xmlwriter:
         FIELD ref           AS CHARACTER    XML-NODE-TYPE 'ATTRIBUTE' XML-NODE-NAME 'ref'.
 
 
-
     DEFINE PRIVATE TEMP-TABLE ttSheetDataRow NO-UNDO 
         FIELD CellRow       AS INTEGER
         FIELD xf_index      AS CHARACTER
@@ -123,6 +122,7 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Worksheet INHERITS xmlwriter:
                          INPUT pchWorkSheetName AS CHARACTER):
         THIS-OBJECT:Workbook      = obj_Workbook.  
         THIS-OBJECT:worksheetname = pchWorkSheetName.
+
         THIS-OBJECT:Utility       = NEW Utility().
 
         THIS-OBJECT:zoom                    = 100. /** Default the zoom to 100% **/
@@ -701,8 +701,6 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Worksheet INHERITS xmlwriter:
                            INPUT ch_DateTime,
                            INPUT 'DATETIME',
                            INPUT obj_Format).
-
-
     END METHOD.
 
     METHOD PUBLIC VOID write (INPUT in_Row   AS INTEGER,
@@ -734,7 +732,6 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Worksheet INHERITS xmlwriter:
                            INPUT in_Col,
                            INPUT param_DateTime,
                            INPUT obj_Format).
-    
     END.
 
 
@@ -757,6 +754,13 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Worksheet INHERITS xmlwriter:
             DEFINE VARIABLE in_Field_Loop   AS INTEGER     NO-UNDO.
             DEFINE VARIABLE ch_field_value  AS CHARACTER   NO-UNDO.
 
+            DEFINE VARIABLE obj_ColumnFormat      AS CLASS FORMAT.
+
+            obj_ColumnFormat = THIS-OBJECT:Workbook:add_Format().
+
+            obj_ColumnFormat:set_bold().
+            obj_ColumnFormat:set_align('centre').
+
             hn_Buffer = hn_temptable:DEFAULT-BUFFER-HANDLE.
             in_Num_fields = hn_Buffer:NUM-FIELDS.
 
@@ -771,7 +775,14 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Worksheet INHERITS xmlwriter:
 
                 THIS-OBJECT:write(INPUT in_row,
                                   INPUT in_col + (in_Field_Loop - 1),
-                                  INPUT ch_field_value ).
+                                  INPUT ch_field_value,
+                                  INPUT obj_ColumnFormat).
+
+
+                THIS-OBJECT:set_column( INPUT in_col + (in_Field_Loop - 1),
+                                        INPUT in_col + (in_Field_Loop - 1),
+                                        INPUT MAXIMUM(hn_Buffer:BUFFER-FIELD( in_Field_Loop ):WIDTH-CHARS , LENGTH(hn_Buffer:BUFFER-FIELD( in_Field_Loop ):COLUMN-LABEL) )
+                                        ). 
 
             END.
 
@@ -783,6 +794,21 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Worksheet INHERITS xmlwriter:
             IF hn_Query:IS-OPEN THEN
             DO:
 
+                DEFINE VARIABLE obj_Format          AS CLASS FORMAT.
+                DEFINE VARIABLE obj_DateTimeFormat  AS CLASS FORMAT.
+                DEFINE VARIABLE obj_DateFormat      AS CLASS FORMAT.
+        
+                obj_Format         = THIS-OBJECT:Workbook:add_Format().
+                obj_DateTimeFormat = THIS-OBJECT:Workbook:add_Format().
+                obj_DateFormat     = THIS-OBJECT:Workbook:add_Format().
+
+                obj_DateTimeFormat:set_num_format('d mmm yyyy HH:MM:SS').
+                obj_DateTimeFormat:set_bold().
+
+                obj_DateFormat:set_num_format('d mmm yyyy').
+                obj_DateFormat:set_bold().
+
+
                 hn_Query:GET-FIRST() NO-ERROR.
                 REPEAT WHILE NOT hn_Query:QUERY-OFF-END:
 
@@ -791,30 +817,52 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Worksheet INHERITS xmlwriter:
 
                     PROCESS EVENTS.
 
+                    MESSAGE in_row in_Num_fields.
+                    PAUSE 0.
+
+                    etime(true).
                     /** Next Row..**/
                     in_row = in_row + 1.
                     DO in_Field_Loop = 1 TO in_Num_fields:
 
+                        
                         /** Can't handle arrays yet..**/
 
                         IF LOGICAL(hn_Buffer:BUFFER-FIELD( in_Field_Loop ):EXTENT) THEN
                             NEXT.
+                        
+                        MESSAGE in_Field_Loop hn_Buffer:BUFFER-FIELD( in_Field_Loop ):DATA-TYPE.
 
                         CASE hn_Buffer:BUFFER-FIELD( in_Field_Loop ):DATA-TYPE:
                             WHEN 'INTEGER' THEN
                                 THIS-OBJECT:write(INPUT in_row, 
                                                   INPUT in_col + (in_Field_Loop - 1), 
-                                                  INPUT INTEGER(hn_Buffer:BUFFER-FIELD( in_Field_Loop ):BUFFER-VALUE())).
+                                                  INPUT INTEGER(hn_Buffer:BUFFER-FIELD( in_Field_Loop ):BUFFER-VALUE()),
+                                                  INPUT obj_Format).
                             WHEN 'DECIMAL' THEN
                                 THIS-OBJECT:write(INPUT in_row, 
                                                   INPUT in_col + (in_Field_Loop - 1), 
-                                                  INPUT DECIMAL(hn_Buffer:BUFFER-FIELD( in_Field_Loop ):BUFFER-VALUE())).
+                                                  INPUT DECIMAL(hn_Buffer:BUFFER-FIELD( in_Field_Loop ):BUFFER-VALUE()),
+                                                  INPUT obj_Format).
+                            WHEN 'DATE' THEN
+                                THIS-OBJECT:write(INPUT in_row, 
+                                                  INPUT in_col + (in_Field_Loop - 1), 
+                                                  INPUT DATE(hn_Buffer:BUFFER-FIELD( in_Field_Loop ):BUFFER-VALUE()),
+                                                  INPUT obj_DateFormat).
+                            WHEN 'DATETIME' THEN
+                                THIS-OBJECT:write(INPUT in_row, 
+                                                  INPUT in_col + (in_Field_Loop - 1), 
+                                                  INPUT DATETIME( hn_Buffer:BUFFER-FIELD( in_Field_Loop ):BUFFER-VALUE() ),
+                                                  INPUT obj_DateTimeFormat).
                             OTHERWISE
                                     THIS-OBJECT:write(INPUT in_row,
                                                       INPUT in_col + (in_Field_Loop - 1), 
-                                                      INPUT TRIM(STRING(hn_Buffer:BUFFER-FIELD( in_Field_Loop ):STRING-VALUE()))).
+                                                      INPUT TRIM(STRING(hn_Buffer:BUFFER-FIELD( in_Field_Loop ):STRING-VALUE())),
+                                                      INPUT obj_Format).
                         END CASE.
                     END.
+
+                    MESSAGE etime.
 
                     hn_Query:GET-NEXT() NO-ERROR.
                 END.
@@ -917,8 +965,9 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Worksheet INHERITS xmlwriter:
 
    METHOD PRIVATE VOID _write_rows():
 
-        DEFINE VARIABLE obj_Format        AS CLASS FORMAT.
-        DEFINE VARIABLE obj_Format_Instant AS CLASS Format.
+        DEFINE VARIABLE obj_Format          AS CLASS    FORMAT.
+        DEFINE VARIABLE obj_Format_Instant  AS CLASS    Format.
+        DEFINE VARIABLE in_xf_Index         AS INTEGER  NO-UNDO.
 
         THIS-OBJECT:_calculate_spans().
 
@@ -939,9 +988,6 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Worksheet INHERITS xmlwriter:
                 
                 IF VALID-OBJECT(obj_Format_Instant) THEN
                 DO:
-
-                    DEFINE VARIABLE in_xf_Index AS INTEGER     NO-UNDO.
-
                     in_xf_Index = obj_Format_Instant:_get_xf_index().
 
                     IF obj_Format_Instant:_get_xf_index() NE 0 THEN 
@@ -979,22 +1025,17 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Worksheet INHERITS xmlwriter:
                         hnSAXWriter:WRITE-DATA-ELEMENT('v', ttSheetData.Cell_Value).
 
                 hnSAXWriter:END-ELEMENT('c').
-       
             END.
-
             hnSAXWriter:END-ELEMENT('row').
-
         END.
-
    END METHOD.
 
    METHOD PRIVATE VOID _calculate_spans():
 
         /* */
 
-        DEFINE VARIABLE inMin_Col AS INTEGER INITIAL ? NO-UNDO.
-        DEFINE VARIABLE inMaxCol AS INTEGER INITIAL ? NO-UNDO.
-
+        DEFINE VARIABLE inMin_Col   AS INTEGER INITIAL ? NO-UNDO.
+        DEFINE VARIABLE inMaxCol    AS INTEGER INITIAL ? NO-UNDO.
 
         FOR EACH ttSheetDataRow
             WHERE ttSheetDataRow.CellRow LE 16,
@@ -1024,7 +1065,7 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Worksheet INHERITS xmlwriter:
    END METHOD.
 
     METHOD PRIVATE VOID _write_sheet_pr():
-        /** If  tab colour has not been defined then return. **/
+        /** If tab colour has not been defined then return. **/
         IF THIS-OBJECT:tab_colour EQ '' THEN
             RETURN.
 

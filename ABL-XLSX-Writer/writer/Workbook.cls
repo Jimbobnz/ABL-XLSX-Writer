@@ -50,7 +50,9 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Workbook INHERITS xmlwriter:
 
     DEFINE PRIVATE TEMP-TABLE ttxf_Formats NO-UNDO
         FIELD format_index  AS INTEGER
+        FIELD format_delete AS LOGICAL INITIAL TRUE
         FIELD ObjFormat     AS CLASS Progress.Lang.OBJECT
+
         INDEX idxIndex IS PRIMARY 
             format_index
         INDEX idxFormat 
@@ -101,6 +103,14 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Workbook INHERITS xmlwriter:
         FIELD hidden        AS LOGICAL      XML-NODE-TYPE 'ATTRIBUTE'   XML-NODE-NAME 'hidden'  
         INDEX idxName   IS PRIMARY
             name.
+
+    DEFINE TEMP-TABLE ttFills NO-UNDO XML-NODE-NAME 'fills'
+        FIELD fill_index    AS INTEGER    XML-NODE-TYPE 'HIDDEN' 
+        FIELD pattern       AS INTEGER 
+        FIELD bg_Colour     AS CHARACTER  XML-NODE-TYPE 'ATTRIBUTE'
+        FIELD fg_Colour     AS CHARACTER  XML-NODE-TYPE 'ATTRIBUTE'
+        INDEX idxFills   IS PRIMARY
+                fill_index.
     
     CONSTRUCTOR Workbook(INPUT pchExcel AS CHARACTER):
         
@@ -128,6 +138,10 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Workbook INHERITS xmlwriter:
         THIS-OBJECT:add_Format(INPUT 0).
         
     END CONSTRUCTOR.
+
+    METHOD PUBLIC HANDLE Fills():
+        RETURN TEMP-TABLE ttFills:HANDLE.
+    END METHOD.
 
     METHOD PUBLIC HANDLE xf_formats():
         RETURN TEMP-TABLE ttxf_Formats:HANDLE.
@@ -244,9 +258,119 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Workbook INHERITS xmlwriter:
 
         RETURN ob_Format.
     END METHOD.
+    
+    METHOD PUBLIC CLASS Format add_Format(INPUT ch_format_options AS CHARACTER):
+
+        DEFINE VARIABLE chValidProperties  AS CHARACTER    NO-UNDO.
+        DEFINE VARIABLE ob_Format          AS CLASS Format NO-UNDO.
+
+        DEFINE VARIABLE ch_PropertyName     AS CHARACTER   NO-UNDO.
+        DEFINE VARIABLE ch_PropertyValue    AS CHARACTER   NO-UNDO.
+        DEFINE VARIABLE ch_Option           AS CHARACTER   NO-UNDO.
+        DEFINE VARIABLE lg_LogicalProperty  AS LOGICAL     NO-UNDO.
+        DEFINE VARIABLE de_NumberProperty   AS DECIMAL     NO-UNDO.
+        DEFINE VARIABLE in_loop             AS INTEGER     NO-UNDO.
+
+        ob_Format = THIS-OBJECT:add_Format().
+
+        FORMAT_OPTION:
+        DO in_loop = 1 TO NUM-ENTRIES(ch_format_options,'|'):
+
+            ch_Option = ENTRY(in_loop, ch_format_options,'|').
+
+            IF NUM-ENTRIES(ch_Option,':') EQ 2 THEN
+            DO:
+                ASSIGN
+                    ch_PropertyName  = TRIM(ENTRY(1,ch_Option,':'))
+                    ch_PropertyValue = TRIM(ENTRY(2,ch_Option,':')).
+            END.
+            ELSE
+                NEXT FORMAT_OPTION.
+
+            /** Determin DATA-TYPE **/
+
+            /** Is it logical???  **/
+            IF LOGICAL(LOOKUP(ch_PropertyValue, 'true,false')) THEN
+            DO:
+                lg_LogicalProperty = LOGICAL(ch_PropertyValue).
+
+                CASE ch_PropertyName:
+                    WHEN 'bold':U THEN
+                        ob_Format:set_bold(INPUT lg_LogicalProperty).
+                    WHEN 'italic':U THEN
+                        ob_Format:set_bold(INPUT lg_LogicalProperty).
+                    WHEN 'underline':U THEN
+                        ob_Format:set_underline(INPUT 1). /** Default to ONE.**/
+                    WHEN 'font_strikeout' THEN
+                        ob_Format:set_font_strikeout(INPUT lg_LogicalProperty).
+                    WHEN 'locked' THEN
+                        ob_Format:set_locked(INPUT lg_LogicalProperty).
+                    WHEN 'hidden' THEN
+                        ob_Format:set_hidden(INPUT lg_LogicalProperty).
+                    WHEN 'text_wrap' THEN
+                        ob_Format:set_text_wrap(INPUT lg_LogicalProperty).
+                    WHEN 'shrink' THEN
+                        ob_Format:set_shrink(INPUT lg_LogicalProperty).
+                END CASE.
+
+                NEXT FORMAT_OPTION.
+            END.
+
+            /** Is it a Number (Integer or DECIMAL)  **/
+            de_NumberProperty = DECIMAL(ch_PropertyValue) NO-ERROR.
+
+            IF NOT ERROR-STATUS:ERROR THEN
+            DO:
+
+                CASE ch_PropertyName:
+                    WHEN 'underline':U THEN
+                        ob_Format:set_underline(INPUT INTEGER(de_NumberProperty) ).
+                    WHEN 'font_script':U THEN
+                        ob_Format:set_font_script(INPUT INTEGER(de_NumberProperty) ).
+                    WHEN 'font_size':U THEN
+                        ob_Format:set_font_size(INPUT de_NumberProperty ).  /** Decimal Property **/
+                    WHEN 'rotation' THEN
+                        ob_Format:set_rotation(INPUT INTEGER(de_NumberProperty) ).
+                    WHEN 'pattern' THEN
+                        ob_Format:set_pattern(INPUT INTEGER(de_NumberProperty) ).
+                    WHEN 'indent' THEN
+                        ob_Format:set_indent(INPUT INTEGER(de_NumberProperty) ).
+                    
+                END CASE.
+
+                NEXT FORMAT_OPTION.
+            END.
+
+            /*** DEFAULT To be being a CHARACTER DATA-TYPE***/
+                
+            ch_PropertyValue = TRIM(ch_PropertyValue,'"').
+
+            CASE ch_PropertyName:
+                WHEN 'font_name' THEN
+                    ob_Format:set_font_name(INPUT ch_PropertyValue).
+                WHEN 'font_colour' THEN
+                    ob_Format:set_font_colour(INPUT ch_PropertyValue).
+                WHEN 'num_format' THEN
+                    ob_Format:set_num_format(INPUT ch_PropertyValue).
+                WHEN 'align' THEN
+                    ob_Format:set_align(INPUT ch_PropertyValue).
+                WHEN 'bg_colour' THEN
+                    ob_Format:set_bg_colour(INPUT ch_PropertyValue).
+                WHEN 'fg_colour' THEN
+                    ob_Format:set_fg_colour(INPUT ch_PropertyValue).
+
+                    
+
+            END CASE.
+
+        END.
+        
+        chValidProperties = "font_name,font_status,font_colour,bold,italic,underline,font_strikeout,font_script,num_format,locked,hidden,align,valign,rotation,text_wrap,text_justlast".
+
+        RETURN ob_Format.
+    END METHOD.
 
     METHOD PUBLIC CLASS Format add_Format():
-
         RETURN THIS-OBJECT:add_Format(INPUT THIS-OBJECT:format_count + 1).
     END METHOD.
 
@@ -282,17 +406,15 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Workbook INHERITS xmlwriter:
             ob_format_instance = CAST(ttxf_Formats.OBJFormat, format).
             in_index = ob_format_instance:xf_index.
             
-            ttxf_Formats.format_index = in_index.
+            FIND FIRST xf_Formats 
+                 WHERE xf_Formats.format_index EQ in_index 
+                   AND ROWID(xf_Formats) NE ROWID(ttxf_Formats) 
+                NO-ERROR.
 
-/*             /** Swap things around..**/                              */
-/*             FOR FIRST xf_Formats                                     */
-/*                 WHERE xf_Formats.format_index EQ in_index:           */
-/*                                                                      */
-/*                 ob_format_temp = CAST(xf_Formats.OBJFormat, format). */
-/*                 xf_Formats.OBJFORMAT = ob_format_instance.           */
-/*                                                                      */
-/*             END.                                                     */
-
+            IF AVAILABLE xf_Formats THEN
+                DELETE ttxf_Formats. 
+            ELSE
+                ttxf_Formats.format_index = in_index.
 
         END.
 
@@ -380,7 +502,7 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Workbook INHERITS xmlwriter:
             ELSE
             DO:
                 JSO_Num_Formats:ADD(ch_FormatCode, in_Index).
-                ob_Format:num_format_index = in_Index. /*** Duck ***/
+                ob_Format:num_format_index = in_Index. 
                 
                 CREATE ttNumFormats.
 
@@ -402,6 +524,109 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Workbook INHERITS xmlwriter:
     END METHOD.
 
     METHOD PRIVATE VOID _prepare_fills():
+
+        &SCOPED-DEFINE xcNone  1
+        &SCOPED-DEFINE xcSolid 2
+        &SCOPED-DEFINE xcGray125 18
+
+        DEFINE VARIABLE ob_Format        AS CLASS format.
+        DEFINE VARIABLE obAvaialbleFills AS CLASS JsonObject.
+        DEFINE VARIABLE inFill_Index     AS INTEGER      NO-UNDO.
+        DEFINE VARIABLE chFillKey        AS CHARACTER    NO-UNDO.
+
+        DEFINE VARIABLE chTempColour AS CHARACTER   NO-UNDO.
+        /** Create a font reocrd. **/
+        obAvaialbleFills = NEW JsonObject().
+
+        CREATE ttFills.
+        ASSIGN
+            ttFills.fill_index = 0
+            ttFills.pattern    = {&xcNone}  /* 1 = 'None' */
+            ttFills.fg_colour  = ''
+            ttFills.bg_colour  = ''.
+
+
+        /* This is a new font */
+        obAvaialbleFills:ADD(':{&xcNone}:::', 0).
+
+        CREATE ttFills.
+        ASSIGN
+            ttFills.fill_index = 1
+            ttFills.pattern   = {&xcGray125}  /* 17 = 'Gray125' */
+            ttFills.fg_colour = ''
+            ttFills.bg_colour = ''.
+
+        obAvaialbleFills:ADD(':{&xcGray125}:::', 1).
+
+        inFill_Index = 2.
+        
+        FOR EACH ttxf_Formats:
+            ob_Format = CAST(ttxf_Formats.ObjFormat, format).
+
+             /** Solid fills get inverted.**/
+
+            IF ob_Format:pattern   EQ {&xcSolid} AND 
+               ob_Format:bg_colour NE '' AND
+               ob_Format:fg_colour NE '' THEN
+            DO:
+                chTempColour        = ob_Format:fg_colour.
+                ob_Format:fg_colour = ob_Format:bg_colour.
+                ob_Format:bg_colour = chTempColour.
+            END.
+
+            IF ob_Format:pattern   LE {&xcSolid}  AND 
+               ob_Format:bg_colour NE '' AND
+               ob_Format:fg_colour EQ '' THEN 
+            DO:
+                ob_Format:fg_colour = ob_Format:bg_colour.
+                ob_Format:bg_colour = ''.
+                ob_Format:pattern   = {&xcSolid}.    /* 2 = Solid */
+            END.
+
+            IF ob_Format:pattern   LE {&xcSolid}  AND 
+               ob_Format:bg_colour EQ '' AND
+               ob_Format:fg_colour NE '' THEN 
+            DO:
+                ob_Format:bg_colour = ''.
+                ob_Format:pattern   = {&xcSolid}.    /* 2 = Solid */
+            END.
+
+            chFillKey = ob_Format:_get_fill_key().
+
+            display chFillKey.
+
+            PAUSE 0.
+
+             /** If the format object font as already been defined 
+                 by another format class object, use that. **/
+
+             IF obAvaialbleFills:HAS(chFillKey) THEN
+             DO:
+                ob_Format:fill_index = obAvaialbleFills:GetInteger(chFillKey).
+                ob_Format:has_fill   = FALSE.
+             END.
+             ELSE
+             DO:
+                 /* This is a new font */
+                 obAvaialbleFills:ADD(chFillKey, inFill_Index).
+
+                 ob_Format:fill_index = inFill_Index.
+                 ob_Format:has_fill   = TRUE.
+                 inFill_Index         = inFill_Index + 1. 
+
+                 CREATE ttFills.
+
+                 ASSIGN
+                     ttFills.Fill_index  = ob_Format:fill_index
+                     ttFills.pattern     = ob_Format:pattern
+                     ttFills.fg_colour   = ob_Format:fg_colour
+                     ttFills.bg_colour   = ob_Format:bg_colour.
+
+             END.
+        END.
+
+        DELETE OBJECT obAvaialbleFills.
+
     END METHOD.
 
     METHOD PUBLIC VOID _assemble_xml_file():
@@ -486,9 +711,9 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Workbook INHERITS xmlwriter:
                                  chXMLFiles,
                                  FILE-INFO:FULL-PATHNAME).
 
-        message chOSCOMMAND.
+        MESSAGE chOSCOMMAND.
         MESSAGE etime.
-        OS-COMMAND VALUE(chOSCOMMAND).
+        OS-COMMAND SILENT VALUE(chOSCOMMAND).
         MESSAGE etime.
 
         DELETE OBJECT objPackager.            
