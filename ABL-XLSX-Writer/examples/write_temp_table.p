@@ -5,33 +5,38 @@ DEFINE VARIABLE objWorksheet         AS CLASS Worksheet  NO-UNDO.
 DEFINE VARIABLE obj_DateTime_Format  AS CLASS FORMAT  NO-UNDO.
 DEFINE VARIABLE obj_Text_Format      AS CLASS FORMAT  NO-UNDO.
 
-DEFINE VARIABLE inCounter AS INTEGER     NO-UNDO.
+DEFINE VARIABLE inCounter       AS INTEGER     NO-UNDO.
 
-DEFINE VARIABLE hn_TempTable AS HANDLE      NO-UNDO.
+DEFINE VARIABLE hn_TempTable     AS HANDLE      NO-UNDO.
 
-DEFINE TEMP-TABLE ttCallCentreOutcome LIKE CallCentreOutcome.
+DEFINE TEMP-TABLE ttTMRResults LIKE TMRResults.
 
-FOR EACH CallCentreOutcome:
+FOR EACH TMRResults:
 
-    CREATE ttCallCentreOutcome.
-    BUFFER-COPY CallCentreOutcome TO ttCallCentreOutcome.
+    PROCESS EVENTS.
+
+    CREATE ttTMRResults.
+    BUFFER-COPY TMRResults TO ttTMRResults.
 
     inCounter = inCounter + 1.
 
+    DISPLAY inCounter.
+    PAUSE 0.
+
+    DOWN 1.
+
+    IF inCounter >= 1 THEN
+        leave.
+
 END.
 
-MESSAGE
-    inCounter
-    view-as alert-box info.
-
-hn_TempTable = TEMP-TABLE ttCallCentreOutcome:HANDLE.
-
+hn_TempTable = TEMP-TABLE ttTMRResults:HANDLE.
 
 /** Create a new Workbook object and supplied it the of this program and appended .xlsx.**/
 objWorkbook  = NEW Workbook(INPUT THIS-PROCEDURE:FILE-NAME + '.xlsx').
 
 /** Optional. Setting the workbook's property for the subject name. **/
-objWorkbook:set_properties('subject', "Formatted Date Time").
+objWorkbook:set_properties('subject', "TEMP-TABLE").
 
 /** Create a new worksheet and give it a name of 'Date Time'. **/
 objWorksheet        = objWorkbook:add_worksheet('TEMP-TABLE').
