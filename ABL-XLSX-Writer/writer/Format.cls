@@ -509,8 +509,19 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Format INHERITS xmlwriter:
         THIS-OBJECT:text_wrap = lg_text_wrap.
     END METHOD.
    
-    METHOD PUBLIC VOID set_rotation(INPUT pin_angle AS INTEGER):
-        THIS-OBJECT:rotation = pin_angle.
+    METHOD PUBLIC VOID set_rotation(INPUT pin_rotation AS INTEGER):
+        
+        IF pin_rotation EQ 270 THEN
+            pin_rotation = 255.
+        ELSE 
+            IF (pin_rotation GE -90 OR 
+                pin_rotation LE 90) THEN
+            IF pin_rotation LT 0 THEN
+                pin_rotation = (pin_rotation * -1) + 90.
+            ELSE
+                MESSAGE "Rotation rotation outside range: -90 <= angle <= 90".
+
+        THIS-OBJECT:rotation = pin_rotation.
     END METHOD.
 
     METHOD PUBLIC VOID set_indent(INPUT pin_level AS INTEGER):
@@ -536,9 +547,6 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Format INHERITS xmlwriter:
 
     METHOD PUBLIC VOID set_bg_colour(INPUT pch_colour AS CHARACTER):
         THIS-OBJECT:bg_colour = THIS-OBJECT:_get_colour(INPUT pch_colour).
-
-        MESSAGE THIS-OBJECT:bg_colour
-            VIEW-AS ALERT-BOX INFO.
 
     END METHOD.
 
