@@ -272,11 +272,6 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Styles INHERITS xmlwriter:
         DEFINE VARIABLE hnBuffer AS HANDLE      NO-UNDO.
         DEFINE VARIABLE hnQuery  AS HANDLE      NO-UNDO.
 
-/*         IF VALID-HANDLE(THIS-OBJECT:fonts) THEN   */
-/*             MESSAGE THIS-OBJECT:fonts:TYPE        */
-/*                     THIS-OBJECT:fonts:HAS-RECORDS */
-/*                 VIEW-AS ALERT-BOX INFO.           */
-
         IF NOT THIS-OBJECT:fonts:HAS-RECORDS THEN
         DO:
             hnSAXWriter:WRITE-EMPTY-ELEMENT('fonts').
@@ -490,19 +485,15 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Styles INHERITS xmlwriter:
         IF chfg_colour NE '' THEN
         DO:
             chfg_colour = REPLACE(chfg_colour,'#','FF').
-            chfg_colour = CAPS(chfg_colour).
-
-            MESSAGE chfg_colour                             
             hnSAXWriter:WRITE-EMPTY-ELEMENT('fgColor').
-            hnSAXWriter:INSERT-ATTRIBUTE('rgb', chfg_colour ).
+            hnSAXWriter:INSERT-ATTRIBUTE('rgb', CAPS(chfg_colour) ).
         END.
 
         IF chbg_colour NE '' THEN
         DO:
             chbg_colour = REPLACE(chbg_colour,'#','FF').
-            chbg_colour = CAPS(chbg_colour).
             hnSAXWriter:WRITE-EMPTY-ELEMENT('bgColor').
-            hnSAXWriter:INSERT-ATTRIBUTE('rgb', chbg_colour ).
+            hnSAXWriter:INSERT-ATTRIBUTE('rgb', CAPS(chbg_colour) ).
         END.
 
         hnSAXWriter:END-ELEMENT('patternFill').
@@ -512,12 +503,12 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Styles INHERITS xmlwriter:
     METHOD VOID _write_borders():
 
 
-     hnSAXWriter:START-ELEMENT('borders').
-            hnSAXWriter:INSERT-ATTRIBUTE('count', '1').
+        hnSAXWriter:START-ELEMENT('borders').
+        hnSAXWriter:INSERT-ATTRIBUTE('count', '1').
 
-            THIS-OBJECT:_write_border().
+        THIS-OBJECT:_write_border().
 
-    hnSAXWriter:END-ELEMENT('borders').
+        hnSAXWriter:END-ELEMENT('borders').
     
 /*         hnSAXWriter:START-ELEMENT('borders').                                     */
 /*         hnSAXWriter:INSERT-ATTRIBUTE('count', STRING(THIS-OBJECT:border_count) ). */
