@@ -333,19 +333,42 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Styles INHERITS xmlwriter:
 
         hnSAXWriter:START-ELEMENT('font').
 
+        /* font name */
+        hnSAXWriter:WRITE-EMPTY-ELEMENT('name').
+        hnSAXWriter:INSERT-ATTRIBUTE('val', STRING(hnFontBuffer::font_name)).
+
+        hnSAXWriter:WRITE-EMPTY-ELEMENT('name').
+        hnSAXWriter:INSERT-ATTRIBUTE('val', STRING(hnFontBuffer::font_name)).
+
         /* bold */
         IF hnFontBuffer::bold THEN
         DO:
             hnSAXWriter:WRITE-EMPTY-ELEMENT('b').
-            hnSAXWriter:INSERT-ATTRIBUTE('val', '1').
+/*             hnSAXWriter:INSERT-ATTRIBUTE('val', '1'). */
         END.
 
         /* italic */
         IF hnFontBuffer::italic THEN
         DO:
             hnSAXWriter:WRITE-EMPTY-ELEMENT('i').
-            hnSAXWriter:INSERT-ATTRIBUTE('val', '1').
+/*             hnSAXWriter:INSERT-ATTRIBUTE('val', '1'). */
         END.
+
+        /* italic */
+        IF LOGICAL(hnFontBuffer::strike) THEN
+            hnSAXWriter:WRITE-EMPTY-ELEMENT('strike').
+
+        /* shadow */
+        IF LOGICAL(hnFontBuffer::shadow) THEN
+            hnSAXWriter:WRITE-EMPTY-ELEMENT('shadow').
+
+        /* extend */
+        IF LOGICAL(hnFontBuffer::extend) THEN
+            hnSAXWriter:WRITE-EMPTY-ELEMENT('extend').
+
+        /* condense */
+        IF LOGICAL(hnFontBuffer::condense) THEN
+            hnSAXWriter:WRITE-EMPTY-ELEMENT('condense').
 
         /* underline */
         IF LOGICAL(hnFontBuffer::f_underline) THEN
@@ -355,6 +378,8 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Styles INHERITS xmlwriter:
                 
         hnSAXWriter:WRITE-EMPTY-ELEMENT('sz').
         hnSAXWriter:INSERT-ATTRIBUTE('val', STRING(hnFontBuffer::font_size)).
+
+        /* Colour */
         hnSAXWriter:WRITE-EMPTY-ELEMENT('color').
 
         IF hnFontBuffer::colour EQ '' THEN
@@ -370,12 +395,14 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Styles INHERITS xmlwriter:
             END.
         END.
 
-        hnSAXWriter:WRITE-EMPTY-ELEMENT('name').
-        hnSAXWriter:INSERT-ATTRIBUTE('val', STRING(hnFontBuffer::font_name)).
+        
+        
         hnSAXWriter:WRITE-EMPTY-ELEMENT('family').
         hnSAXWriter:INSERT-ATTRIBUTE('val', STRING(hnFontBuffer::family)).
+        
         hnSAXWriter:WRITE-EMPTY-ELEMENT('scheme').
         hnSAXWriter:INSERT-ATTRIBUTE('val', 'minor').
+
         hnSAXWriter:END-ELEMENT('font').
 
     END METHOD.
