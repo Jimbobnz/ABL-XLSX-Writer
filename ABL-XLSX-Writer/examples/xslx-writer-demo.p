@@ -25,9 +25,6 @@ objWorkbook:set_properties('status', 'Everything is Awsome').
 
 objWorksheet = objWorkbook:add_worksheet('Clients').
 
-    
-    
-    
     inLoop = 3.
 
     /** Set the the third column to be x width wide **/

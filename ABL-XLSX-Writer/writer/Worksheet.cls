@@ -13,24 +13,30 @@
 /*     IN THE SOFTWARE.                                                                                                                                     */
 
 USING ABL-XLSX-Writer.ABL-XLSX-Writer.writer.*.
+USING Progress.Json.ObjectModel.*.
 
 &SCOPED-DEFINE da_EpocDate DATE(1,1,1900)
 &SCOPED-DEFINE ximillisecondsInDay   0x5265C00 
 
 CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Worksheet INHERITS xmlwriter:
     
-   DEFINE PUBLIC PROPERTY worksheetname             AS CHARACTER GET. SET.
-   DEFINE PUBLIC PROPERTY optimization              AS LOGICAL INITIAL TRUE  GET. SET.
+   DEFINE PRIVATE PROPERTY worksheetname             AS CHARACTER GET. SET.
+   DEFINE PUBLIC  PROPERTY optimization              AS LOGICAL INITIAL TRUE  GET. SET.
     
    DEFINE PUBLIC  PROPERTY SharedStringTable        AS CLASS SharedStringTable GET. SET. /** Object set by the workbook.cls **/
    DEFINE PRIVATE PROPERTY Utility                  AS CLASS Utility           GET. SET. 
    DEFINE PRIVATE PROPERTY Workbook                 AS CLASS Workbook          GET. SET. 
+
+   DEFINE PRIVATE PROPERTY protect_options           AS CLASS JsonObject        GET. SET. 
       
    DEFINE PRIVATE PROPERTY dim_rowmin               AS INTEGER INITIAL ? GET. SET.
    DEFINE PRIVATE PROPERTY dim_colmin               AS INTEGER INITIAL ? GET. SET. 
    DEFINE PRIVATE PROPERTY dim_rowmax               AS INTEGER GET. SET. 
    DEFINE PRIVATE PROPERTY dim_colmax               AS INTEGER GET. SET. 
    DEFINE PRIVATE PROPERTY span                     AS CHARACTER GET. SET.
+
+   DEFINE PUBLIC PROPERTY hidden                    AS LOGICAL NO-UNDO  GET. PRIVATE SET. 
+   
    
     /** View Attributes **/
     DEFINE PUBLIC PROPERTY showGridLines            AS LOGICAL NO-UNDO  GET. PRIVATE SET. 
@@ -51,7 +57,8 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Worksheet INHERITS xmlwriter:
     DEFINE PUBLIC PROPERTY tab_colour               AS CHARACTER              NO-UNDO GET. PRIVATE SET.
     
     /** pageSetup Attributes **/
-    DEFINE PUBLIC PROPERTY paper_size                AS INTEGER   NO-UNDO                   GET. PRIVATE SET.
+    DEFINE PUBLIC PROPERTY paper_size               AS INTEGER   NO-UNDO                   GET. PRIVATE SET.
+    DEFINE PUBLIC PROPERTY BlackAndWhite            AS LOGICAL   NO-UNDO                   GET. PRIVATE SET.
     
     DEFINE PUBLIC PROPERTY print_scale              AS INTEGER   NO-UNDO INITIAL 100        GET. SET.
     DEFINE PUBLIC PROPERTY orientation              AS CHARACTER NO-UNDO INITIAL 'portrait' GET. SET.
@@ -237,7 +244,48 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Worksheet INHERITS xmlwriter:
         THIS-OBJECT:tab_colour = THIS-OBJECT:Utility:xl_colour(INPUT pch_tab_colour).
     END METHOD.
 
-    METHOD PUBLIC VOID protect (INPUT pch_password AS CHARACTER):
+    METHOD PUBLIC VOID protect (INPUT pch_password AS CHARACTER,
+                                INPUT pch_Protect  AS CHARACTER):
+
+        DEFINE VARIABLE obj_PasswordHasher  AS CLASS PasswordHasher.
+        DEFINE VARIABLE obj_defaults        AS CLASS JsonObject.
+
+        obj_PasswordHasher = NEW PasswordHasher().
+        pch_password = obj_PasswordHasher:_encode_password(pch_password).
+        DELETE OBJECT obj_PasswordHasher.
+        
+        obj_defaults = NEW JsonObject().
+
+        /** Defaults **/
+        obj_defaults:ADD('sheet',TRUE).
+        obj_defaults:ADD('content',FALSE).
+        obj_defaults:ADD('objects',FALSE).
+        obj_defaults:ADD('scenarios', FALSE).
+        obj_defaults:ADD('format_cells', FALSE).
+        obj_defaults:ADD('format_columns', FALSE).
+        obj_defaults:ADD('format_rows', FALSE).
+        obj_defaults:ADD('insert_columns', FALSE).
+        obj_defaults:ADD('insert_rows', FALSE).
+        obj_defaults:ADD('insert_hyperlinks', FALSE).
+        obj_defaults:ADD('delete_columns', FALSE).
+        obj_defaults:ADD('delete_rows', FALSE).
+        obj_defaults:ADD('select_locked_cells', TRUE).
+        obj_defaults:ADD('sort', FALSE).
+        obj_defaults:ADD('autofilter', FALSE).
+        obj_defaults:ADD('pivot_tables', FALSE).
+        obj_defaults:ADD('select_unlocked_cells', TRUE).
+
+        DEFINE VARIABLE inLoop AS INTEGER     NO-UNDO.
+
+        DO inLoop = 1 TO NUM-ENTRIES(pch_Protect,'|'):
+
+            IF obj_defaults:HAS(ENTRY(inLoop, pch_Protect, '|')) THEN
+                obj_defaults:SET(ENTRY(inLoop, pch_Protect, '|'), TRUE).
+        END.
+
+        obj_defaults:ADD('password', pch_password).
+        
+        THIS-OBJECT:protect_options = obj_defaults.
     END METHOD.
 
 /* ########################################################################### */
@@ -259,10 +307,55 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Worksheet INHERITS xmlwriter:
     METHOD PUBLIC VOID set_page_view():
         THIS-OBJECT:page_view = TRUE.
     END METHOD.
+
+    METHOD PUBLIC VOID set_BlackAndWhite():
+        THIS-OBJECT:BlackAndWhite = TRUE.
+    END METHOD.
     
     METHOD PUBLIC VOID set_paper(INPUT pc_paper_size AS CHARACTER):
-         THIS-OBJECT:paper_size         = paper_size.
-         THIS-OBJECT:page_setup_changed = TRUE.
+         
+        CASE pc_paper_size:
+            WHEN 'Letter' THEN
+                THIS-OBJECT:set_paper(INPUT 1).
+            WHEN 'LetterSmall' THEN
+                THIS-OBJECT:set_paper(INPUT 2).
+            WHEN 'Tabloid' THEN
+                THIS-OBJECT:set_paper(INPUT 3).
+            WHEN 'Ledger' THEN
+                THIS-OBJECT:set_paper(INPUT 4).
+            WHEN 'Legal' THEN
+                THIS-OBJECT:set_paper(INPUT 5).
+            WHEN 'Statement ' THEN
+                THIS-OBJECT:set_paper(INPUT 6).
+            WHEN 'Executive' THEN                
+                THIS-OBJECT:set_paper(INPUT 7).
+            WHEN 'A3' THEN
+                THIS-OBJECT:set_paper(INPUT 8).
+            WHEN 'A4' THEN
+                THIS-OBJECT:set_paper(INPUT 9).
+            WHEN 'A5' THEN
+                THIS-OBJECT:set_paper(INPUT 11).
+            WHEN 'B4' THEN
+                THIS-OBJECT:set_paper(INPUT 12).
+            WHEN 'B5' THEN
+                THIS-OBJECT:set_paper(INPUT 13).
+            WHEN 'Folio' THEN
+                THIS-OBJECT:set_paper(INPUT 14).
+            WHEN '11x17' THEN
+                THIS-OBJECT:set_paper(INPUT 17).
+        END CASE.
+
+    END METHOD.
+
+    METHOD PUBLIC VOID set_paper(INPUT in_paper_size AS INTEGER ):
+
+         IF (in_paper_size GE 1 AND 
+             in_paper_size LE 68) THEN
+         DO:
+            THIS-OBJECT:paper_size         = in_paper_size.
+            THIS-OBJECT:page_setup_changed = TRUE.
+         END.
+
     END METHOD.
     
     METHOD PUBLIC VOID center_horizontally():
@@ -733,7 +826,27 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Worksheet INHERITS xmlwriter:
                            INPUT param_DateTime,
                            INPUT obj_Format).
     END.
+    
+    METHOD PUBLIC CHARACTER get_name():
+        
+        /** 
+        Retrieve the worksheet name.
+        **/
 
+        RETURN THIS-OBJECT:worksheetname.
+    END METHOD.
+
+    METHOD PUBLIC VOID activate():
+        
+        /** 
+        Retrieve the worksheet name.
+        **/
+
+        THIS-OBJECT:hidden = FALSE.
+        THIS-OBJECT:selected = TRUE.
+
+/*         THIS-OBJECT:worksheet_meta:activesheet = THIS-INDEX.index */
+    END METHOD.
 
 
     METHOD PUBLIC VOID write_temp_table(INPUT in_row        AS INTEGER, 
@@ -1226,6 +1339,70 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Worksheet INHERITS xmlwriter:
     END METHOD.
 
    METHOD PRIVATE VOID _write_sheet_protection():
+
+        DEFINE VARIABLE ob_options AS CLASS JSONOBJECT.
+   
+        IF NOT VALID-OBJECT( THIS-OBJECT:protect_options ) THEN
+            RETURN.
+
+        ob_options = THIS-OBJECT:protect_options.
+
+        hnSAXWriter:WRITE-EMPTY-ELEMENT('sheetProtection').  
+
+        IF NOT ob_options:IsNull('password') THEN
+            hnSAXWriter:INSERT-ATTRIBUTE('password', ob_options:GETCHARACTER('password') ).
+
+        IF ob_options:GetLogical('sheet') THEN
+            hnSAXWriter:INSERT-ATTRIBUTE('sheet', '1').
+
+        IF ob_options:GetLogical('content') THEN
+            hnSAXWriter:INSERT-ATTRIBUTE('content', '1').
+
+        IF NOT  ob_options:GetLogical('objects') THEN
+            hnSAXWriter:INSERT-ATTRIBUTE('objects', '1').
+
+        IF NOT  ob_options:GetLogical('scenarios') THEN
+            hnSAXWriter:INSERT-ATTRIBUTE('scenarios', '1').
+
+        IF ob_options:GetLogical('format_cells') THEN
+            hnSAXWriter:INSERT-ATTRIBUTE('formatCells', '0').
+
+        IF ob_options:GetLogical('format_columns') THEN
+            hnSAXWriter:INSERT-ATTRIBUTE('formatColumns', '0').
+
+        IF ob_options:GetLogical('format_rows') THEN
+            hnSAXWriter:INSERT-ATTRIBUTE('formatRows', '0').
+
+        IF ob_options:GetLogical('insert_columns') THEN
+            hnSAXWriter:INSERT-ATTRIBUTE('insertColumns', '0').
+
+        IF ob_options:GetLogical('insert_rows') THEN
+            hnSAXWriter:INSERT-ATTRIBUTE('insertRows', '0').
+
+        IF ob_options:GetLogical('insert_hyperlinks') THEN
+            hnSAXWriter:INSERT-ATTRIBUTE('insertHyperlinks', '0').
+
+        IF ob_options:GetLogical('delete_columns') THEN
+            hnSAXWriter:INSERT-ATTRIBUTE('deleteColumns', '0').
+
+        IF ob_options:GetLogical('delete_rows') THEN
+            hnSAXWriter:INSERT-ATTRIBUTE('deleteRows', '0').
+
+        IF NOT ob_options:GetLogical('select_locked_cells') THEN
+            hnSAXWriter:INSERT-ATTRIBUTE('selectLockedCells', '1').
+
+        IF ob_options:GetLogical('sort') THEN
+            hnSAXWriter:INSERT-ATTRIBUTE('sort', '0').
+
+        IF ob_options:GetLogical('autofilter') THEN
+            hnSAXWriter:INSERT-ATTRIBUTE('autoFilter', '0').
+
+        IF ob_options:GetLogical('pivot_tables') THEN
+            hnSAXWriter:INSERT-ATTRIBUTE('pivotTables', '0').
+
+        IF NOT ob_options:GetLogical('select_unlocked_cells') THEN
+            hnSAXWriter:INSERT-ATTRIBUTE('selectUnlockedCells', '1').
+
    END METHOD.
 
    METHOD PRIVATE VOID _write_auto_filter():

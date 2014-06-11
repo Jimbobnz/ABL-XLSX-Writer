@@ -161,7 +161,7 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Workbook INHERITS xmlwriter:
 
     /** PUBLIC METHODS... **/
 
-    METHOD PUBLIC VOID set_properties(INPUT ch_ParameterKey   AS CHARACTER,
+    METHOD PUBLIC VOID set_properties(INPUT ch_ParameterKey   AS CHARACTER, 
                                       INPUT ch_ParameterValue AS CHARACTER):
         
         DEFINE VARIABLE hnProperties    AS HANDLE      NO-UNDO.
