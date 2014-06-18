@@ -92,6 +92,9 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.ContentTypes INHERITS xmlwriter:
     END METHOD.
 
     METHOD VOID _write_types():
+
+        IF hnSAXWriter:WRITE-STATUS EQ SAX-WRITE-ERROR THEN
+            RETURN.
     
         hnSAXWriter:START-ELEMENT('Types').
 

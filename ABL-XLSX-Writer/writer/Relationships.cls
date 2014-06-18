@@ -78,6 +78,9 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Relationships INHERITS xmlwriter:
 
     METHOD PRIVATE VOID _write_relationships():
         
+        IF hnSAXWriter:WRITE-STATUS EQ SAX-WRITE-ERROR THEN
+            RETURN.
+
         hnSAXWriter:START-ELEMENT('Relationships').
 
         hnSAXWriter:DECLARE-NAMESPACE('http://schemas.openxmlformats.org/package/2006/relationships').

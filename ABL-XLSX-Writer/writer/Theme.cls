@@ -27,7 +27,8 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Theme INHERITS xmlwriter:
 
     METHOD PUBLIC VOID _write_theme_file():
 
-        IF NOT VALID-HANDLE(hnSAXWriter) THEN
+        IF NOT VALID-HANDLE(hnSAXWriter) OR 
+           hnSAXWriter:WRITE-STATUS EQ SAX-WRITE-ERROR THEN
             RETURN.
             
         /** Don't Touch this code it's working to well to mess around with.**/

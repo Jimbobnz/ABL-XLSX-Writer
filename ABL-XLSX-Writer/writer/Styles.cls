@@ -146,7 +146,7 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Styles INHERITS xmlwriter:
 
         DEFINE VARIABLE hnQuery  AS HANDLE      NO-UNDO.
         DEFINE VARIABLE hnBuffer AS HANDLE      NO-UNDO.
-        DEFINE VARIABLE obj_FormatInstance      AS CLASS format.
+        DEFINE VARIABLE obj_FormatInstance      AS CLASS Format.
 
         IF VALID-HANDLE(hnxf_formats) AND hnxf_formats:TYPE EQ 'TEMP-TABLE' THEN
             THIS-OBJECT:xf_formats = hnxf_formats. 
@@ -173,6 +173,9 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Styles INHERITS xmlwriter:
     END METHOD.
 
     METHOD PRIVATE VOID _write_style_sheet():
+
+        IF hnSAXWriter:WRITE-STATUS EQ SAX-WRITE-ERROR THEN
+            RETURN.
         
         hnSAXWriter:START-ELEMENT('styleSheet').
         hnSAXWriter:DECLARE-NAMESPACE('http://schemas.openxmlformats.org/spreadsheetml/2006/main').
@@ -337,24 +340,15 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Styles INHERITS xmlwriter:
         hnSAXWriter:WRITE-EMPTY-ELEMENT('name').
         hnSAXWriter:INSERT-ATTRIBUTE('val', STRING(hnFontBuffer::font_name)).
 
-        hnSAXWriter:WRITE-EMPTY-ELEMENT('name').
-        hnSAXWriter:INSERT-ATTRIBUTE('val', STRING(hnFontBuffer::font_name)).
-
         /* bold */
         IF hnFontBuffer::bold THEN
-        DO:
             hnSAXWriter:WRITE-EMPTY-ELEMENT('b').
-/*             hnSAXWriter:INSERT-ATTRIBUTE('val', '1'). */
-        END.
 
         /* italic */
         IF hnFontBuffer::italic THEN
-        DO:
             hnSAXWriter:WRITE-EMPTY-ELEMENT('i').
-/*             hnSAXWriter:INSERT-ATTRIBUTE('val', '1'). */
-        END.
 
-        /* italic */
+        /* strike */
         IF LOGICAL(hnFontBuffer::strike) THEN
             hnSAXWriter:WRITE-EMPTY-ELEMENT('strike').
 

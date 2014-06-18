@@ -18,7 +18,7 @@ USING Progress.Json.ObjectModel.*.
 CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Packager:
 
     DEFINE PRIVATE PROPERTY filenames        AS CHARACTER GET. SET.
-    DEFINE PRIVATE PROPERTY Workbook         AS CLASS workbook GET. SET.
+    DEFINE PRIVATE PROPERTY Workbook         AS CLASS Workbook GET. SET.
     DEFINE PRIVATE PROPERTY objContentTypes  AS CLASS ContentTypes GET. SET.
     DEFINE PRIVATE PROPERTY workbook_count   AS INTEGER GET. SET.
     DEFINE PRIVATE PROPERTY unique_base_dir  AS CHARACTER GET. SET.
@@ -34,7 +34,7 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Packager:
         OS-DELETE VALUE( THIS-OBJECT:temp-dir ) RECURSIVE.
     END.
 
-    METHOD PUBLIC VOID _add_Workbook(INPUT workbook AS CLASS workbook):
+    METHOD PUBLIC VOID _add_workbook(INPUT workbook AS CLASS Workbook):
 
         THIS-OBJECT:Workbook = workbook.
         THIS-OBJECT:workbook_count = THIS-OBJECT:workbook_count + 1.
@@ -44,9 +44,12 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Packager:
     METHOD PUBLIC VOID _set_tmpdir(INPUT pchTempDir AS CHARACTER):
 
         pchTempDir = REPLACE(pchTempDir,'~\','/').
-        pchTempDir = pchTempDir + '/' + THIS-OBJECT:unique_base_dir.
-        pchTempDir = REPLACE(pchTempDir,'//','/').
+        pchTempDir = pchTempDir + '/' + THIS-OBJECT:Unique_base_dir.
 
+        REPEAT WHILE INDEX(pchTempDir,'//') GT 0:
+            pchTempDir = REPLACE(pchTempDir,'//','/').
+        END.
+        
         THIS-OBJECT:temp-dir = pchTempDir.
 
         OS-CREATE-DIR VALUE( THIS-OBJECT:temp-dir ).
@@ -59,24 +62,17 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Packager:
 
         THIS-OBJECT:filenames = THIS-OBJECT:filenames + QUOTER(pchXMLFileName) + ' '. 
 
-        chFullPathName = THIS-OBJECT:temp-dir + '/' + pchXMLFileName.
-        
+        chFullPathName = THIS-OBJECT:TEMP-DIR + '/' + pchXMLFileName.
+            
         RETURN chFullPathName.
-
     END METHOD.
 
     METHOD PUBLIC CHARACTER  _create_package():
         
-        MESSAGE '_write_worksheet_files()'.
-        THIS-OBJECT:_write_worksheet_files().
         
-        MESSAGE '_write_worksheet_files()'.
+        THIS-OBJECT:_write_worksheet_files().
         THIS-OBJECT:_write_chartsheet_files().
-
-        MESSAGE '_write_workbook_file()'.
         THIS-OBJECT:_write_workbook_file().
-
-        MESSAGE '_write_chart_files()'.
         THIS-OBJECT:_write_chart_files().
 
         THIS-OBJECT:_write_drawing_files().
@@ -107,7 +103,7 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Packager:
         DEFINE VARIABLE hnTTWorksheets AS HANDLE      NO-UNDO.
         DEFINE VARIABLE hnBuffer       AS HANDLE      NO-UNDO.
         DEFINE VARIABLE hnQuery        AS HANDLE      NO-UNDO.
-        DEFINE VARIABLE ObjWorkSheet   AS CLASS worksheet   NO-UNDO.
+        DEFINE VARIABLE ObjWorkSheet   AS CLASS Worksheet   NO-UNDO.
         DEFINE VARIABLE obJsonArray    AS CLASS JsonArray.
         
         DEFINE VARIABLE WorkSheetSelected AS LOGICAL INITIAL FALSE     NO-UNDO.
@@ -158,8 +154,6 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Packager:
     METHOD PUBLIC VOID _write_workbook_file():
         
         THIS-OBJECT:Workbook:_set_xml_writer( THIS-OBJECT:_filename('xl/workbook.xml') ).
-
-        MESSAGE 'Workbook:_assemble_xml_file()'.
         THIS-OBJECT:Workbook:_assemble_xml_file().
     END METHOD.
 
@@ -190,6 +184,8 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Packager:
 
         objsst:_set_xml_writer( THIS-OBJECT:_filename('xl/sharedStrings.xml') ).
         objsst:_assemble_xml_file().
+
+        DELETE OBJECT objsst.
 
     END METHOD.
 
@@ -234,6 +230,8 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Packager:
 
         objApp:_set_xml_writer( THIS-OBJECT:_filename('docProps/app.xml') ).
         objApp:_assemble_xml_file().
+
+        DELETE OBJECT objApp.
 
     END METHOD.
 

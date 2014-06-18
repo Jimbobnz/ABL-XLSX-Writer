@@ -14,9 +14,11 @@
 
 USING ABL-XLSX-Writer.ABL-XLSX-Writer.writer.*.
 USING Progress.Json.ObjectModel.*.
-USING System.IO.Compression.* FROM ASSEMBLY.
+/* USING System.IO.Compression.* FROM ASSEMBLY. */
 
 CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Workbook INHERITS xmlwriter:
+
+DEFINE STREAM SOSCOMMAND.
 
 /**
  * Workbook Class Object
@@ -36,7 +38,7 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Workbook INHERITS xmlwriter:
     DEFINE PRIVATE PROPERTY xf_Format_indices   AS CLASS JSONOBJECT             GET. SET.
     DEFINE PRIVATE PROPERTY dxf_Format_indices  AS CLASS JSONOBJECT             GET. SET.
 
-    DEFINE PRIVATE PROPERTY obj_DefaultFormats  AS CLASS format                 GET. SET.
+    DEFINE PRIVATE PROPERTY obj_DefaultFormats  AS CLASS Format                 GET. SET.
     
     
 
@@ -124,9 +126,11 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Workbook INHERITS xmlwriter:
 
             RETURN ERROR.
         END.
+        
+        FILE-INFO:FILE-NAME = SESSION:TEMP-DIR.
 
         THIS-OBJECT:filename           = pchExcel.
-        THIS-OBJECT:TempDir            = SESSION:TEMP-DIR.
+        THIS-OBJECT:TempDir            = FILE-INFO:FULL-PATHNAME.
         THIS-OBJECT:SharedStringTable  = NEW SharedStringTable().
 
         THIS-OBJECT:xf_Format_indices  = NEW JSONOBJECT(). 
@@ -138,6 +142,28 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Workbook INHERITS xmlwriter:
         THIS-OBJECT:add_Format(INPUT 0).
         
     END CONSTRUCTOR.
+
+    DESTRUCTOR Workbook():
+        DEFINE VARIABLE obWorksheet AS CLASS Worksheet.
+        DEFINE VARIABLE obFORMAT    AS CLASS Format.
+
+        FOR EACH ttWorkSheet:
+            obWorksheet = CAST(ttWorkSheet.ObjWorkSheet, Worksheet).
+            IF VALID-OBJECT(obWorksheet) THEN
+                DELETE OBJECT obWorksheet.
+        END.
+
+        EMPTY TEMP-TABLE ttWorkSheet.
+
+        FOR EACH ttxf_Formats:
+            obFORMAT = CAST(ttxf_Formats.ObjFormat, Format).
+            IF VALID-OBJECT(obFORMAT) THEN
+                DELETE OBJECT obFORMAT.
+        END.
+
+        EMPTY TEMP-TABLE ttxf_Formats.
+
+    END DESTRUCTOR.        
 
     METHOD PUBLIC HANDLE Fills():
         RETURN TEMP-TABLE ttFills:HANDLE.
@@ -193,13 +219,13 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Workbook INHERITS xmlwriter:
 
     END METHOD.
 
-    METHOD PUBLIC CLASS worksheet add_worksheet():
+    METHOD PUBLIC CLASS Worksheet add_worksheet():
         RETURN THIS-OBJECT:add_worksheet(INPUT THIS-OBJECT:sheetname + STRING(THIS-OBJECT:sheetname_count + 1) ).
     END METHOD.
 
-    METHOD PUBLIC CLASS worksheet add_worksheet( INPUT pcSheetName AS CHARACTER):
+    METHOD PUBLIC CLASS Worksheet add_worksheet( INPUT pcSheetName AS CHARACTER):
 
-        DEFINE VARIABLE ObjNewWorkSheet AS CLASS worksheet.
+        DEFINE VARIABLE ObjNewWorkSheet AS CLASS Worksheet.
         
         THIS-OBJECT:sheetname_count = THIS-OBJECT:sheetname_count + 1.
         
@@ -222,8 +248,7 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Workbook INHERITS xmlwriter:
     END METHOD.
 
     METHOD PUBLIC VOID close():
-        THIS-OBJECT:_store_workbook
-            ().
+        THIS-OBJECT:_store_workbook().
     END METHOD.
 
     METHOD PUBLIC HANDLE worksheets():
@@ -373,14 +398,9 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Workbook INHERITS xmlwriter:
     END METHOD.
 
     METHOD PRIVATE VOID _prepare_format_properties():
-
-        MESSAGE '_prepare_formats()'.    
         THIS-OBJECT:_prepare_formats().
-        MESSAGE '_prepare_fonts()'.    
         THIS-OBJECT:_prepare_fonts().
-        MESSAGE '_prepare_num_formats()'.    
         THIS-OBJECT:_prepare_num_formats(). /** Number format/masks**/
-        MESSAGE '_prepare_borders()'.    
         THIS-OBJECT:_prepare_borders().
         THIS-OBJECT:_prepare_fills().
     END METHOD.
@@ -391,8 +411,7 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Workbook INHERITS xmlwriter:
 
         DEFINE VARIABLE in_index            AS INTEGER     NO-UNDO.
         DEFINE VARIABLE ob_format_instance  AS CLASS FORMAT NO-UNDO.
-            
-        DEFINE VARIABLE ob_format_temp  AS CLASS FORMAT NO-UNDO.
+        DEFINE VARIABLE ob_format_temp      AS CLASS FORMAT NO-UNDO.
 
         DEFINE BUFFER ttxf_Formats  FOR TEMP-TABLE ttxf_Formats.
         DEFINE BUFFER xf_Formats    FOR TEMP-TABLE ttxf_Formats.
@@ -626,9 +645,8 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Workbook INHERITS xmlwriter:
     METHOD PUBLIC VOID _assemble_xml_file():
 
         DEFINE VARIABLE ObjClassInstance     AS CLASS Progress.Lang.Object .
-        DEFINE VARIABLE ObjWorkSheetInstance AS CLASS worksheet.
+        DEFINE VARIABLE ObjWorkSheetInstance AS CLASS Worksheet.
             
-        MESSAGE '_prepare_format_properties()'.
         THIS-OBJECT:_prepare_format_properties().
 
         /** Create a new Worksheet if one has not been defined. **/
@@ -650,11 +668,9 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Workbook INHERITS xmlwriter:
     METHOD PRIVATE VOID _store_workbook():
         
         DEFINE VARIABLE chXMLFiles      AS CHARACTER    NO-UNDO.
-        DEFINE VARIABLE objPackager     AS CLASS packager NO-UNDO.
+        DEFINE VARIABLE objPackager     AS CLASS Packager NO-UNDO.
         DEFINE VARIABLE INETIME         AS INTEGER     NO-UNDO.
         DEFINE VARIABLE chOSCOMMAND     AS CHARACTER   NO-UNDO.
-
-        ETIME(true).
 
         THIS-OBJECT:_prepare_sst_string_data().
         
@@ -668,26 +684,22 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Workbook INHERITS xmlwriter:
         
         THIS-OBJECT:_prepare_tables().
         
-        MESSAGE 'NEW Package' etime.
         objPackager = NEW Packager().
 
-        objPackager:_add_Workbook(THIS-OBJECT).
+        objPackager:_add_workbook(THIS-OBJECT).
         objPackager:_set_tmpdir( THIS-OBJECT:TempDir ).
 
-        MESSAGE '_create_package start' etime.
+        
          chXMLFiles = objPackager:_create_package().
-        MESSAGE '_create_package end' etime.
 
-        MESSAGE etime.
-
-        DEFINE VARIABLE obj_Zip     AS  ZipFile NO-UNDO.
+/*         DEFINE VARIABLE obj_Zip     AS ZipFile NO-UNDO. */
         DEFINE VARIABLE zipPath     AS CHARACTER   NO-UNDO.
         DEFINE VARIABLE startPath   AS CHARACTER   NO-UNDO.
          
         FILE-INFO:FILE-NAME = '.'.
         
-        startPath   = FILE-INFO:FULL-PATHNAME + "/temp/ablxml".
-        zipPath     = FILE-INFO:FULL-PATHNAME + "/ablxml.zip".
+/*         startPath   = FILE-INFO:FULL-PATHNAME + "/temp/ablxml". */
+/*         zipPath     = FILE-INFO:FULL-PATHNAME + "/ablxml.zip".  */
         
         OS-DELETE VALUE(THIS-OBJECT:filename).
         
@@ -699,22 +711,42 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Workbook INHERITS xmlwriter:
 
         FILE-INFO:FILE-NAME = '.'.
 
-        chOSCOMMAND = SUBSTITUTE('cd "&1"&&&&&4/zip -S -r &4/&2 &3',
-                                 objPackager:temp-dir,
-                                 THIS-OBJECT:filename,
-                                 chXMLFiles,
-                                 FILE-INFO:FULL-PATHNAME).
+        IF OPSYS EQ 'WIN32' THEN
+            chOSCOMMAND = SUBSTITUTE('cd "&1"&&&&&4/zip -S -r &4/&2 &3',
+                                     objPackager:temp-dir,
+                                     THIS-OBJECT:filename,
+                                     chXMLFiles,
+                                     FILE-INFO:FULL-PATHNAME).
+        ELSE
+            chOSCOMMAND = SUBSTITUTE('cd "&1"; zip -v -r &2 &3',
+                                     objPackager:temp-dir,
+                                     THIS-OBJECT:filename,
+                                     chXMLFiles).
 
         MESSAGE chOSCOMMAND.
-        MESSAGE etime.
-        OS-COMMAND SILENT VALUE(chOSCOMMAND).
-        MESSAGE etime.
+
+        DEFINE VARIABLE chInputResponce AS CHARACTER   NO-UNDO.
+        
+        INPUT STREAM SOSCOMMAND THROUGH VALUE(chOSCOMMAND) UNBUFFERED.
+        REPEAT:
+
+            chInputResponce = ''.
+            IMPORT STREAM SOSCOMMAND UNFORMATTED  chInputResponce.
+
+            MESSAGE 'ZIP: ' chInputResponce.
+
+        END.
+        INPUT STREAM SOSCOMMAND CLOSE.
+
+/*         OS-COMMAND SILENT VALUE(chOSCOMMAND). */
 
         DELETE OBJECT objPackager.            
     END METHOD.
 
     METHOD PRIVATE VOID _write_workbook():
             
+        IF hnSAXWriter:WRITE-STATUS EQ SAX-WRITE-ERROR THEN
+            RETURN.
 
         hnSAXWriter:START-ELEMENT('workbook').
 

@@ -22,7 +22,7 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.xmlwriter:
          RETURN.
 
         THIS-OBJECT:hnSAXWriter:VERSION    = "1.0".
-        THIS-OBJECT:hnSAXWriter:ENCODING   = "UTF-8".
+        THIS-OBJECT:hnSAXWriter:ENCODING   = SESSION:CPSTREAM.
         THIS-OBJECT:hnSAXWriter:STANDALONE = TRUE.
 
         THIS-OBJECT:hnSAXWriter:FORMATTED  = FALSE.
@@ -37,30 +37,75 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.xmlwriter:
         ELSE
             CREATE SAX-WRITER THIS-OBJECT:hnSAXWriter.
 
-        DEFINE VARIABLE chDirectory AS CHARACTER   NO-UNDO.
-        DEFINE VARIABLE i AS INTEGER     NO-UNDO.
+        DEFINE VARIABLE chDirectory AS CHARACTER    NO-UNDO.
+        DEFINE VARIABLE i           AS INTEGER      NO-UNDO.
+        DEFINE VARIABLE stat        AS INTEGER      NO-UNDO.
+
+        pchXMLFile = REPLACE(pchXMLFile,'~\','/').
+
+        REPEAT WHILE INDEX(pchXMLFile,'//') GT 0:
+            pchXMLFile = REPLACE(pchXMLFile,'//','/').
+        END.
+
+        
+        
         DO i = 1 TO (NUM-ENTRIES(pchXMLFile,'/') - 1):
 
             chDirectory = chDirectory + ENTRY(i, pchXMLFile,'/').
 
-            IF chDirectory EQ '.' OR 
-               chDirectory EQ '..' OR
-               chDirectory EQ '' THEN
+            IF chDirectory EQ       '.'  OR 
+               chDirectory EQ       '..' OR
+               chDirectory EQ       ''   OR
+               chDirectory MATCHES  '*:' THEN
                 NEXT.
 
-            OS-CREATE-DIR VALUE(chDirectory).
+            IF NOT chDirectory BEGINS '/' AND OPSYS NE 'WIN32' THEN
+                chDirectory = '/' + chDirectory.
+
+            FILE-INFO:FILE-NAME = chDirectory.
+                                          
+            
+
+            IF FILE-INFO:FULL-PATHNAME EQ ? THEN
+            DO:
+
+                IF NOT chDirectory MATCHES '*:' THEN    /** Test for a windows dirve letter**/
+                    OS-CREATE-DIR VALUE(chDirectory).
+
+                stat = OS-ERROR.
+
+                IF stat NE 0 THEN 
+                    MESSAGE "Directory not created. System Error #" stat.
+            END.
 
             chDirectory = chDirectory + '/'.
 
         END.
+
+/*         FILE-INFO:FILE-NAME = chDirectory.   */
+/*                                              */
+/*         MESSAGE QUOTER(FILE-INFO:FILE-NAME). */
+
+
+/*         MESSAGE chDirectory SKIP */
+/*                 pchXMLFile       */
+/*             VIEW-AS ALERT-BOX.   */
         
         /** Write the XML declaration. **/
         THIS-OBJECT:_xml_declaration().
             
-        
-        THIS-OBJECT:hnSAXWriter:SET-OUTPUT-DESTINATION("file",pchXMLFile).
-        THIS-OBJECT:hnSAXWriter:START-DOCUMENT( ).
 
+        IF hnSAXWriter:WRITE-STATUS EQ SAX-WRITE-IDLE OR 
+           hnSAXWriter:WRITE-STATUS EQ SAX-WRITE-COMPLETE THEN
+        DO:
+            IF NOT THIS-OBJECT:hnSAXWriter:SET-OUTPUT-DESTINATION("file",pchXMLFile) THEN
+            DO:
+                MESSAGE 'Error SAX Writer:' QUOTER(pchXMLFile).
+            END.
+            ELSE            
+                THIS-OBJECT:hnSAXWriter:START-DOCUMENT( ).
+        END.
+        
     END METHOD.
 
     METHOD VOID _xml_close():

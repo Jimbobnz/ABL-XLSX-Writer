@@ -82,6 +82,9 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.App INHERITS xmlwriter:
 
     METHOD PRIVATE VOID _write_properties():
         
+        IF hnSAXWriter:WRITE-STATUS EQ SAX-WRITE-ERROR THEN
+            RETURN.
+
         hnSAXWriter:START-ELEMENT('Properties').
 
         hnSAXWriter:DECLARE-NAMESPACE('http://schemas.openxmlformats.org/officeDocument/2006/extended-properties').

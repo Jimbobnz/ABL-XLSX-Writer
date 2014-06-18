@@ -24,6 +24,9 @@ MESSAGE objWorkbook:filename
                                            
 objWorkbook:close().
 
+DELETE OBJECT objWorkbook.
+
+
 
 
 

@@ -124,6 +124,32 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Worksheet INHERITS xmlwriter:
       INDEX idxCellRowCol IS PRIMARY UNIQUE
             CellRow
             CellCol.
+
+     DESTRUCTOR Worksheet():
+        
+        DEFINE VARIABLE obFORMAT AS CLASS Format.
+
+        FOR EACH ttSheetData:
+            obFORMAT = CAST(ttSheetData.objformat, Format).
+
+            IF VALID-OBJECT(obFORMAT) THEN
+                DELETE OBJECT obFORMAT.
+        END.
+
+        FOR EACH ttCols:
+            obFORMAT = CAST(ttCols.objformat, Format).
+
+            IF VALID-OBJECT(obFORMAT) THEN
+                DELETE OBJECT obFORMAT.
+        END.
+
+        EMPTY TEMP-TABLE ttSheetData.
+        EMPTY TEMP-TABLE ttCols.
+
+        IF VALID-OBJECT( THIS-OBJECT:Utility ) THEN
+            DELETE OBJECT THIS-OBJECT:Utility. 
+
+    END DESTRUCTOR. 
     
    CONSTRUCTOR Worksheet(INPUT obj_Workbook     AS CLASS Workbook,
                          INPUT pchWorkSheetName AS CHARACTER):
@@ -191,15 +217,18 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Worksheet INHERITS xmlwriter:
         DO:
             IF chDataType EQ 'DATETIME' AND Obj_Format:num_format EQ '0' THEN
                 Obj_Format:set_num_Format(INPUT 'd mmmm yyyy hh:mm:ss').
+
+            IF chDataType EQ 'DATE'     AND Obj_Format:num_format EQ '0' THEN
+                Obj_Format:set_num_Format(INPUT 'd mmmm yyyy').
             
             IF chDataType EQ 'DECIMAL' AND Obj_Format:num_format EQ '0' THEN
-                Obj_Format:set_num_Format(INPUT '0.00'). /** Option Number 2**/
+                Obj_Format:set_num_Format(INPUT '#,##0.00'). /** Option Number 2**/
             
-            IF chDataType EQ 'INTEGER' THEN
-                Obj_Format:set_num_Format(INPUT '0').    /** Option Number 1**/
+            IF chDataType EQ 'INTEGER' AND Obj_Format:num_format EQ '0' THEN
+                Obj_Format:set_num_Format(INPUT '#,##0').    /** Option Number 3**/
 
             IF chDataType EQ 'CHARACTER' AND Obj_Format:num_format EQ '0' THEN
-                Obj_Format:set_num_Format(INPUT 'General').    /** Option Number 1**/
+                Obj_Format:set_num_Format(INPUT 'General').    /** Option Number 0**/
 
         END.            
 
@@ -721,14 +750,13 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Worksheet INHERITS xmlwriter:
                               INPUT in_Col   AS INTEGER,
                               INPUT daVALUE  AS DATE):
 
-        DEFINE VARIABLE in_Interval  AS INT64    NO-UNDO.
         DEFINE VARIABLE obj_Format   AS CLASS FORMAT.
 
         obj_Format = THIS-OBJECT:Workbook:add_Format().
 
         THIS-OBJECT:write(INPUT in_Row, 
                            INPUT in_Col,
-                           INPUT in_Interval,
+                           INPUT daVALUE ,
                            INPUT obj_Format).
     END METHOD.
 
@@ -848,6 +876,10 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Worksheet INHERITS xmlwriter:
 /*         THIS-OBJECT:worksheet_meta:activesheet = THIS-INDEX.index */
     END METHOD.
 
+    METHOD PUBLIC VOID conditional_format():
+
+    END METHOD.
+
 
     METHOD PUBLIC VOID write_temp_table(INPUT in_row        AS INTEGER, 
                                         INPUT in_col        AS INTEGER,
@@ -877,26 +909,54 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Worksheet INHERITS xmlwriter:
             hn_Buffer = hn_temptable:DEFAULT-BUFFER-HANDLE.
             in_Num_fields = hn_Buffer:NUM-FIELDS.
 
+            DEFINE VARIABLE INEXTENT AS INTEGER     NO-UNDO.
+
+            DEFINE VARIABLE in_Column_Index AS INTEGER     NO-UNDO.
+            
+            in_Column_Index = in_col.
+
             DO in_Field_Loop = 1 TO in_Num_fields :
 
                 ch_field_value = hn_Buffer:BUFFER-FIELD( in_Field_Loop ):COLUMN-LABEL.
 
-                IF LOGICAL(hn_Buffer:BUFFER-FIELD( in_Field_Loop ):EXTENT) THEN
-                    ch_field_value = SUBSTITUTE('&1 [&2]',
-                                                ch_field_value,
-                                                hn_Buffer:BUFFER-FIELD( in_Field_Loop ):EXTENT).
+                IF hn_Buffer:BUFFER-FIELD( in_Field_Loop ):EXTENT GT 1 THEN
+                DO:
 
-                THIS-OBJECT:write(INPUT in_row,
-                                  INPUT in_col + (in_Field_Loop - 1),
-                                  INPUT ch_field_value,
-                                  INPUT obj_ColumnFormat).
+/*                     in_Column_Index = in_Column_Index + (in_Field_Loop - 1). */
+
+                    DO INEXTENT = 1 TO hn_Buffer:BUFFER-FIELD( in_Field_Loop ):EXTENT:
+                                                
+                        THIS-OBJECT:write(INPUT in_row,
+                                          INPUT in_Column_Index,
+                                          INPUT SUBSTITUTE('&1 [&2]', ch_field_value, INEXTENT ),
+                                          INPUT obj_ColumnFormat).
+
+                        in_Column_Index = in_Column_Index + 1 .                        
+
+                    END.
+
+                    THIS-OBJECT:set_column( INPUT (in_Column_Index - INEXTENT) + 1,
+                                            INPUT in_Column_Index - 1,
+                                            INPUT MAXIMUM(hn_Buffer:BUFFER-FIELD( in_Field_Loop ):WIDTH-CHARS , LENGTH(hn_Buffer:BUFFER-FIELD( in_Field_Loop ):COLUMN-LABEL) + 5 )
+                                            ). 
+
+                END.
+                ELSE
+                DO:
+
+                    in_Column_Index = in_Column_Index + (in_Field_Loop - 1).
+
+                    THIS-OBJECT:write(INPUT in_row,
+                                      INPUT in_Column_Index,
+                                      INPUT ch_field_value,
+                                      INPUT obj_ColumnFormat).
 
 
-                THIS-OBJECT:set_column( INPUT in_col + (in_Field_Loop - 1),
-                                        INPUT in_col + (in_Field_Loop - 1),
-                                        INPUT MAXIMUM(hn_Buffer:BUFFER-FIELD( in_Field_Loop ):WIDTH-CHARS , LENGTH(hn_Buffer:BUFFER-FIELD( in_Field_Loop ):COLUMN-LABEL) )
-                                        ). 
-
+                    THIS-OBJECT:set_column( INPUT in_Column_Index,
+                                            INPUT in_Column_Index,
+                                            INPUT MAXIMUM(hn_Buffer:BUFFER-FIELD( in_Field_Loop ):WIDTH-CHARS , LENGTH(hn_Buffer:BUFFER-FIELD( in_Field_Loop ):COLUMN-LABEL) )
+                                            ). 
+                END.
             END.
 
             CREATE QUERY hn_Query.
@@ -921,7 +981,7 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Worksheet INHERITS xmlwriter:
                 obj_DateFormat:set_num_format('d mmm yyyy').
                 obj_DateFormat:set_bold().
 
-
+                
                 hn_Query:GET-FIRST() NO-ERROR.
                 REPEAT WHILE NOT hn_Query:QUERY-OFF-END:
 
@@ -932,47 +992,63 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Worksheet INHERITS xmlwriter:
 
                     MESSAGE in_row in_Num_fields.
                     PAUSE 0.
+                    
+                    INEXTENT = 0.
+
+                    in_Column_Index = in_col.
 
                     etime(true).
                     /** Next Row..**/
                     in_row = in_row + 1.
+
                     DO in_Field_Loop = 1 TO in_Num_fields:
 
                         
                         /** Can't handle arrays yet..**/
-
-                        IF LOGICAL(hn_Buffer:BUFFER-FIELD( in_Field_Loop ):EXTENT) THEN
-                            NEXT.
+                    
+/*                         IF LOGICAL(hn_Buffer:BUFFER-FIELD( in_Field_Loop ):EXTENT) THEN */
+/*                             NEXT.                                                       */
                         
                         MESSAGE in_Field_Loop hn_Buffer:BUFFER-FIELD( in_Field_Loop ):DATA-TYPE.
 
-                        CASE hn_Buffer:BUFFER-FIELD( in_Field_Loop ):DATA-TYPE:
-                            WHEN 'INTEGER' THEN
-                                THIS-OBJECT:write(INPUT in_row, 
-                                                  INPUT in_col + (in_Field_Loop - 1), 
-                                                  INPUT INTEGER(hn_Buffer:BUFFER-FIELD( in_Field_Loop ):BUFFER-VALUE()),
-                                                  INPUT obj_Format).
-                            WHEN 'DECIMAL' THEN
-                                THIS-OBJECT:write(INPUT in_row, 
-                                                  INPUT in_col + (in_Field_Loop - 1), 
-                                                  INPUT DECIMAL(hn_Buffer:BUFFER-FIELD( in_Field_Loop ):BUFFER-VALUE()),
-                                                  INPUT obj_Format).
-                            WHEN 'DATE' THEN
-                                THIS-OBJECT:write(INPUT in_row, 
-                                                  INPUT in_col + (in_Field_Loop - 1), 
-                                                  INPUT DATE(hn_Buffer:BUFFER-FIELD( in_Field_Loop ):BUFFER-VALUE()),
-                                                  INPUT obj_DateFormat).
-                            WHEN 'DATETIME' THEN
-                                THIS-OBJECT:write(INPUT in_row, 
-                                                  INPUT in_col + (in_Field_Loop - 1), 
-                                                  INPUT DATETIME( hn_Buffer:BUFFER-FIELD( in_Field_Loop ):BUFFER-VALUE() ),
-                                                  INPUT obj_DateTimeFormat).
-                            OTHERWISE
-                                    THIS-OBJECT:write(INPUT in_row,
-                                                      INPUT in_col + (in_Field_Loop - 1), 
-                                                      INPUT TRIM(STRING(hn_Buffer:BUFFER-FIELD( in_Field_Loop ):STRING-VALUE())),
+                        DEFINE VARIABLE inSubSCRIPT AS INTEGER     NO-UNDO INITIAL 0.
+
+                        /** IF THE BUFFER FIELD IS AN EXTENT THEN START THE SUBSCRIPT AT 1 (One).**/
+                        IF LOGICAL(hn_Buffer:BUFFER-FIELD( in_Field_Loop ):EXTENT) THEN
+                            inSubSCRIPT = 1. 
+
+                        DO INEXTENT = inSubSCRIPT TO (hn_Buffer:BUFFER-FIELD( in_Field_Loop ):EXTENT):
+
+                            CASE hn_Buffer:BUFFER-FIELD( in_Field_Loop ):DATA-TYPE:
+                                WHEN 'INTEGER' THEN
+                                    THIS-OBJECT:write(INPUT in_row, 
+                                                      INPUT in_Column_Index, 
+                                                      INPUT INTEGER(hn_Buffer:BUFFER-FIELD( in_Field_Loop ):BUFFER-VALUE(INEXTENT)),
                                                       INPUT obj_Format).
-                        END CASE.
+                                WHEN 'DECIMAL' THEN
+                                    THIS-OBJECT:write(INPUT in_row, 
+                                                      INPUT in_Column_Index, 
+                                                      INPUT DECIMAL(hn_Buffer:BUFFER-FIELD( in_Field_Loop ):BUFFER-VALUE(INEXTENT)),
+                                                      INPUT obj_Format).
+                                WHEN 'DATE' THEN
+                                    THIS-OBJECT:write(INPUT in_row, 
+                                                      INPUT in_Column_Index, 
+                                                      INPUT DATE(hn_Buffer:BUFFER-FIELD( in_Field_Loop ):BUFFER-VALUE(INEXTENT)),
+                                                      INPUT obj_DateFormat).
+                                WHEN 'DATETIME' THEN
+                                    THIS-OBJECT:write(INPUT in_row, 
+                                                      INPUT in_Column_Index, 
+                                                      INPUT DATETIME( hn_Buffer:BUFFER-FIELD( in_Field_Loop ):BUFFER-VALUE(INEXTENT) ),
+                                                      INPUT obj_DateTimeFormat).
+                                OTHERWISE
+                                        THIS-OBJECT:write(INPUT in_row,
+                                                          INPUT in_Column_Index, 
+                                                          INPUT TRIM(STRING(hn_Buffer:BUFFER-FIELD( in_Field_Loop ):STRING-VALUE(INEXTENT))),
+                                                          INPUT obj_Format).
+                            END CASE.
+
+                            in_Column_Index = in_Column_Index + 1.
+                        END.
                     END.
 
                     MESSAGE etime.
@@ -1004,6 +1080,9 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Worksheet INHERITS xmlwriter:
 
 
    METHOD PRIVATE VOID _write_worksheet().
+    
+    IF hnSAXWriter:WRITE-STATUS EQ SAX-WRITE-ERROR THEN
+        RETURN.
 
     hnSAXWriter:START-ELEMENT('worksheet'). 
     hnSAXWriter:DECLARE-NAMESPACE('http://schemas.openxmlformats.org/spreadsheetml/2006/main').
@@ -1134,8 +1213,14 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Worksheet INHERITS xmlwriter:
                 IF ttSheetData.DatATYPE EQ 'FORMULA' THEN
                     hnSAXWriter:WRITE-DATA-ELEMENT('f', ttSheetData.Cell_Value).
                 ELSE
-                    IF ttSheetData.Cell_Value NE '' THEN
-                        hnSAXWriter:WRITE-DATA-ELEMENT('v', ttSheetData.Cell_Value).
+                DO:
+                    
+                    IF ttSheetData.Cell_Value NE '' AND ttSheetData.Cell_Value NE ? THEN
+                        hnSAXWriter:WRITE-DATA-ELEMENT('v', ttSheetData.Cell_Value ).
+                    ELSE IF ttSheetData.Cell_Value EQ ? THEN
+                        hnSAXWriter:WRITE-DATA-ELEMENT('v', '0' ).
+
+                END.
 
                 hnSAXWriter:END-ELEMENT('c').
             END.

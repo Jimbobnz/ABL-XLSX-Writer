@@ -67,14 +67,17 @@ CLASS ABL-XLSX-Writer.ABL-XLSX-Writer.writer.Core INHERITS xmlwriter:
 
     
     METHOD PRIVATE VOID _write_cp_core_properties():
+
+        IF hnSAXWriter:WRITE-STATUS EQ SAX-WRITE-ERROR THEN
+        RETURN.
         
         hnSAXWriter:START-ELEMENT('cp:coreProperties').
-
-    hnSAXWriter:DECLARE-NAMESPACE('http://schemas.openxmlformats.org/package/2006/metadata/core-properties','cp').
-    hnSAXWriter:DECLARE-NAMESPACE('http://purl.org/dc/elements/1.1/','dc').
-    hnSAXWriter:DECLARE-NAMESPACE('http://purl.org/dc/terms/','dcterms').
-    hnSAXWriter:DECLARE-NAMESPACE('http://purl.org/dc/dcmitype/','dcmitype').
-    hnSAXWriter:DECLARE-NAMESPACE('http://www.w3.org/2001/XMLSchema-instance','xsi').
+    
+        hnSAXWriter:DECLARE-NAMESPACE('http://schemas.openxmlformats.org/package/2006/metadata/core-properties','cp').
+        hnSAXWriter:DECLARE-NAMESPACE('http://purl.org/dc/elements/1.1/','dc').
+        hnSAXWriter:DECLARE-NAMESPACE('http://purl.org/dc/terms/','dcterms').
+        hnSAXWriter:DECLARE-NAMESPACE('http://purl.org/dc/dcmitype/','dcmitype').
+        hnSAXWriter:DECLARE-NAMESPACE('http://www.w3.org/2001/XMLSchema-instance','xsi').
 
         THIS-OBJECT:_write_dc_creator().
         THIS-OBJECT:_write_cp_last_modified_by().
